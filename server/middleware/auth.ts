@@ -15,7 +15,7 @@ export function cookieBase(maxAgeMs: number) {
 }
 
 /** Rotas que NÃO contam como "uso" (não renovam a sessão nem adiam o bloqueio por inatividade). */
-const SEM_RENOVACAO = new Set(['/api/auth/sessao', '/api/health', '/api/atualizacao/aviso', '/api/notificacoes/contagem']);
+const SEM_RENOVACAO = new Set(['/api/auth/sessao', '/api/health', '/api/atualizacao/aviso', '/api/notificacoes/contagem', '/api/eventos']);
 
 /**
  * Lê o cookie de sessão (ou a chave de API) e preenche req.usuario / req.sessao.

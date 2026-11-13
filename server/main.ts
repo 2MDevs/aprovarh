@@ -3,10 +3,12 @@ import { bootstrap } from './core/bootstrap.ts';
 import { migrate } from './db/migrate.ts';
 import { pool } from './db/pool.ts';
 import { criarApp } from './app.ts';
+import { iniciarTempoReal } from './core/tempoReal.ts';
 
 async function iniciar() {
   await migrate();
   await bootstrap();
+  await iniciarTempoReal();
   const servidor = criarApp().listen(env.PORT, () => {
     console.log(`[aprovaRH] API no ar na porta ${env.PORT} (${env.NODE_ENV})`);
   });
