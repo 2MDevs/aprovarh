@@ -6,10 +6,10 @@ import { decrypt, encrypt } from '../lib/crypto.ts';
  * Prioridade: Banco > .env > padrão. Cada valor informa de onde veio.
  * Segredos ficam cifrados no banco e nunca voltam para a tela (só "definido" / mascarado).
  */
-type Tipo = 'texto' | 'numero' | 'booleano' | 'segredo' | 'email';
+type Tipo = 'texto' | 'textoLongo' | 'numero' | 'booleano' | 'segredo' | 'email';
 
 interface Definicao {
-  grupo: 'smtp' | 'seguranca' | 'geral';
+  grupo: 'smtp' | 'seguranca' | 'arquivos' | 'privacidade';
   rotulo: string;
   tipo: Tipo;
   env?: string;
@@ -29,6 +29,14 @@ export const DEFINICOES = {
   'seguranca.sessao_horas': { grupo: 'seguranca', rotulo: 'Validade da sessão (horas)', tipo: 'numero', env: 'SESSION_TTL_HOURS', padrao: '8', min: 1, max: 72 },
   'seguranca.bloqueio_minutos': { grupo: 'seguranca', rotulo: 'Minutos sem uso para bloquear a tela', tipo: 'numero', env: 'LOCK_IDLE_MINUTES', padrao: '10', min: 1, max: 240 },
   'seguranca.pin_tentativas': { grupo: 'seguranca', rotulo: 'Tentativas de PIN antes de encerrar a sessão', tipo: 'numero', env: 'PIN_MAX_ATTEMPTS', padrao: '5', min: 1, max: 20 },
+
+  // Cadastro público (etapa 3). Valores iniciais propostos na decisão D15.
+  'arquivos.curriculo_mb': { grupo: 'arquivos', rotulo: 'Tamanho máximo do currículo (MB)', tipo: 'numero', env: 'CURRICULO_MAX_MB', padrao: '10', min: 1, max: 25 },
+  'arquivos.foto_mb': { grupo: 'arquivos', rotulo: 'Tamanho máximo da foto 3x4 (MB)', tipo: 'numero', env: 'FOTO_MAX_MB', padrao: '5', min: 1, max: 15 },
+
+  // Aviso de privacidade (LGPD) mostrado no formulário. Sem ele, o cadastro público fica fechado.
+  'privacidade.aviso': { grupo: 'privacidade', rotulo: 'Texto do aviso de privacidade', tipo: 'textoLongo' },
+  'privacidade.controlador': { grupo: 'privacidade', rotulo: 'Contato para dúvidas sobre dados (e-mail do encarregado/RH)', tipo: 'texto' },
 } as const satisfies Record<string, Definicao>;
 
 export type ChaveConfig = keyof typeof DEFINICOES;
@@ -121,7 +129,7 @@ export async function gravarConfig(db: Db, chave: ChaveConfig, valor: string | n
       }
     }
     if (def.tipo === 'booleano' && !/^(true|false)$/.test(valor)) throw new Error(`${def.rotulo}: valor inválido.`);
-    if (valor.length > 500) throw new Error(`${def.rotulo}: valor grande demais.`);
+    if (valor.length > (def.tipo === 'textoLongo' ? 20_000 : 500)) throw new Error(`${def.rotulo}: valor grande demais.`);
   }
   const segredo = def.tipo === 'segredo';
   const gravado = valor === null || valor === '' ? null : segredo ? encrypt(valor) : valor;

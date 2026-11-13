@@ -15,6 +15,8 @@ Pedidos que alteram dados, vindos do navegador, precisam ter a origem igual ao `
 | Método | Rota | O que faz |
 |---|---|---|
 | GET | `/api/health` | Banco no ar? (indicador "Conectado" e atualizador) |
+| GET | `/api/publico/formulario` | Formulário de candidatura: aberto ou não, unidades ativas, aviso de privacidade (texto e versão), limites de arquivo |
+| POST | `/api/publico/candidaturas` | `multipart/form-data`: nome, sobrenome, cpf, telefone, unidadeId, aceite, avisoVersao, curriculo, foto. Limite de 5 envios bem-sucedidos por hora por IP. Resposta sempre `{ok:true}` (não revela CPF repetido) |
 
 ## Acesso (`/api/auth`)
 | Método | Rota | O que faz |
@@ -49,7 +51,7 @@ Pedidos que alteram dados, vindos do navegador, precisam ter a origem igual ao `
 **API & Webhooks** (`/api/sistema/api`, mais `api.gerenciar`): `GET /escopos` · `GET/POST /chaves` · `POST /chaves/:id/revogar` · `GET/POST /webhooks` · `PUT/DELETE /webhooks/:id` · `POST /webhooks/:id/testar`
 
 ## Integração (`/api/integracao`, só Desenvolvedor, senha reconfirmada a cada 10 min)
-`GET /cards` · `GET/PUT /config/smtp` · `GET/PUT /config/seguranca` · `POST /smtp/teste` `{para}` · `GET /env` · `GET /admin` · `POST /admin/enviar-redefinicao`
+`GET /cards` · `GET/PUT /config/smtp` · `GET/PUT /config/seguranca` · `GET/PUT /config/arquivos` · `GET/PUT /config/privacidade` · `POST /smtp/teste` `{para}` · `GET /env` · `GET /admin` · `POST /admin/enviar-redefinicao`
 
 ## Atualização (`/api/atualizacao`)
 `GET /aviso` (todos: há versão nova?) · só Desenvolvedor: `GET /status` · `POST /verificar` · `POST /atualizar` `{senha}`

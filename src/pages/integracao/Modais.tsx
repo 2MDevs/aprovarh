@@ -9,12 +9,12 @@ import { CORES } from './cores';
 
 interface PropsModal { onFechar: () => void; onErro: (e: unknown) => void }
 
-interface ItemConfig { chave: string; rotulo: string; tipo: 'texto' | 'numero' | 'booleano' | 'segredo' | 'email'; origem: 'banco' | 'env' | 'padrao' | 'nao_definido'; valor: string | null; definido: boolean; min?: number; max?: number }
+interface ItemConfig { chave: string; rotulo: string; tipo: 'texto' | 'textoLongo' | 'numero' | 'booleano' | 'segredo' | 'email'; origem: 'banco' | 'env' | 'padrao' | 'nao_definido'; valor: string | null; definido: boolean; min?: number; max?: number }
 
 const ORIGEM: Record<ItemConfig['origem'], string> = { banco: 'Salvo pela tela', env: 'Vindo do .env', padrao: 'Padrão', nao_definido: 'Não definido' };
 
 /** Formulário genérico de um grupo de configurações (Banco > .env > padrão). */
-function useGrupo(grupo: 'smtp' | 'seguranca', onErro: (e: unknown) => void) {
+function useGrupo(grupo: 'smtp' | 'seguranca' | 'arquivos' | 'privacidade', onErro: (e: unknown) => void) {
   const { dados, erro, carregando } = useDados<ItemConfig[]>(`/api/integracao/config/${grupo}`);
   const [valores, setValores] = useState<Record<string, string>>({});
   useEffect(() => {
@@ -35,6 +35,16 @@ function CamposGrupo({ itens, valores, setValores }: { itens: ItemConfig[]; valo
     <div className="space-y-4">
       {itens.map((i) => {
         const ajuda = `${ORIGEM[i.origem]}${i.tipo === 'segredo' && i.definido ? ' · já configurada (deixe vazio para manter)' : ''}`;
+        if (i.tipo === 'textoLongo') {
+          return (
+            <div key={i.chave}>
+              <label className="rotulo" htmlFor={`cfg-${i.chave}`}>{i.rotulo}</label>
+              <textarea id={`cfg-${i.chave}`} className="campo min-h-64 font-normal leading-relaxed" maxLength={20000}
+                value={valores[i.chave] ?? ''} onChange={(e) => setValores((s) => ({ ...s, [i.chave]: e.target.value }))} />
+              <p className="mt-1.5 text-[13px] text-suave">{ajuda}</p>
+            </div>
+          );
+        }
         if (i.tipo === 'booleano') {
           return <Interruptor key={i.chave} ligado={valores[i.chave] === 'true'} onChange={(v) => setValores((s) => ({ ...s, [i.chave]: String(v) }))} rotulo={i.rotulo} descricao={ajuda} />;
         }
@@ -318,6 +328,44 @@ export function ModalAtualizacao({ onFechar, onErro }: PropsModal) {
               <pre className="mt-2 max-h-64 overflow-auto rounded-xl bg-grafite p-4 text-xs text-creme">{d.log}</pre>
             </details>
           )}
+        </div>
+      )}
+    </Modal>
+  );
+}
+
+// ── Aviso de privacidade (LGPD) ────────────────────────────────────────────
+export function ModalPrivacidade({ onFechar, onErro }: PropsModal) {
+  const g = useGrupo('privacidade', onErro);
+  const s = useSalvar(onErro, onFechar, 'Aviso de privacidade salvo.');
+  return (
+    <Modal aberto onFechar={onFechar} titulo="Aviso de privacidade" largura="max-w-2xl"
+      descricao="O candidato lê e aceita este texto antes de enviar a candidatura. Enquanto ele estiver vazio, o formulário público fica fechado."
+      selo={<SeloSigla sigla="LGPD" cor={CORES.privacidade} />}
+      rodape={<Rodape onFechar={onFechar} salvando={s.salvando} onSalvar={() => void s.executar(g.salvar)} />}>
+      {g.carregando || !g.itens ? <Carregando /> : (
+        <div className="space-y-5">
+          {s.erro && <Aviso tipo="erro">{s.erro}</Aviso>}
+          <Aviso tipo="atencao">O texto deve ser escrito ou aprovado pelo RH e pelo jurídico. Ele precisa dizer quais dados são coletados (nome, CPF, telefone, currículo e foto), para que são usados, por quanto tempo são guardados e como o candidato pede a exclusão. Quando o texto muda, os próximos candidatos aceitam a nova versão.</Aviso>
+          <CamposGrupo itens={g.itens} valores={g.valores} setValores={g.setValores} />
+        </div>
+      )}
+    </Modal>
+  );
+}
+
+// ── Arquivos do candidato ──────────────────────────────────────────────────
+export function ModalArquivos({ onFechar, onErro }: PropsModal) {
+  const g = useGrupo('arquivos', onErro);
+  const s = useSalvar(onErro, onFechar, 'Limites salvos.');
+  return (
+    <Modal aberto onFechar={onFechar} titulo="Arquivos do candidato" descricao="Currículo: PDF, DOC ou DOCX. Foto 3x4: JPG ou PNG. O tipo é conferido pelo conteúdo do arquivo, não pelo nome."
+      selo={<SeloSigla sigla="ARQ" cor={CORES.arquivos} />}
+      rodape={<Rodape onFechar={onFechar} salvando={s.salvando} onSalvar={() => void s.executar(g.salvar)} />}>
+      {g.carregando || !g.itens ? <Carregando /> : (
+        <div className="space-y-5">
+          {s.erro && <Aviso tipo="erro">{s.erro}</Aviso>}
+          <CamposGrupo itens={g.itens} valores={g.valores} setValores={g.setValores} />
         </div>
       )}
     </Modal>

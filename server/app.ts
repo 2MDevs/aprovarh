@@ -16,6 +16,7 @@ import { dispositivosRouter } from './modules/dispositivos/routes.ts';
 import { integracaoRouter } from './modules/integracao/routes.ts';
 import { notificacoesRouter } from './modules/notificacoes/routes.ts';
 import { sistemaRouter } from './modules/sistema/routes.ts';
+import { publicoRouter } from './modules/publico/routes.ts';
 import { perfisRouter, unidadesRouter, usuariosRouter } from './modules/usuarios/routes.ts';
 
 export function criarApp() {
@@ -50,6 +51,7 @@ export function criarApp() {
   });
 
   app.use('/api', limiteGeral, conferirOrigem, carregarSessao);
+  app.use('/api/publico', publicoRouter);
   app.use('/api/auth', authRouter);
   app.use('/api/conta', contaRouter);
   app.use('/api/usuarios', usuariosRouter);

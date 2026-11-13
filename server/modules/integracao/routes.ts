@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { env } from '../../config/env.ts';
 import { auditarReq } from '../../core/audit.ts';
 import { smtpConfigurado, testarSmtp } from '../../core/mailer.ts';
-import { configuracoesDoGrupo, DEFINICOES, ehChaveConfig, gravarConfig, limparCacheConfig } from '../../core/settings.ts';
+import { cfg, configuracoesDoGrupo, DEFINICOES, ehChaveConfig, gravarConfig, limparCacheConfig } from '../../core/settings.ts';
 import { pool, transaction } from '../../db/pool.ts';
 import { badRequest, h, HttpError, notFound, parse } from '../../lib/http.ts';
 import { exigirDesenvolvedor, exigirLogin, exigirReautenticacao } from '../../middleware/auth.ts';
@@ -24,11 +24,13 @@ integracaoRouter.get('/cards', h(async (_req, res) => {
     { id: 'seguranca', aba: 'geral', sigla: 'SG', nome: 'Segurança & Sessão', categoria: 'Segurança', descricao: 'Validade da sessão, bloqueio por inatividade e tentativas de PIN.', configurado: true },
     { id: 'admin', aba: 'geral', sigla: 'AD', nome: 'Administrador principal', categoria: 'Acesso', descricao: 'E-mail do administrador e envio de redefinição de senha.', configurado: Boolean(env.ADMIN_EMAIL) },
     { id: 'env', aba: 'geral', sigla: 'ENV', nome: 'Variáveis do .env', categoria: 'Sistema', descricao: 'Mostra quais variáveis estão definidas, sem mostrar valores secretos.', configurado: true },
+    { id: 'privacidade', aba: 'geral', sigla: 'LGPD', nome: 'Aviso de privacidade', categoria: 'Cadastro de candidatos', descricao: 'Texto que o candidato aceita antes de enviar a candidatura. Sem ele, o formulário fica fechado.', configurado: Boolean(await cfg('privacidade.aviso')) },
+    { id: 'arquivos', aba: 'geral', sigla: 'ARQ', nome: 'Arquivos do candidato', categoria: 'Cadastro de candidatos', descricao: 'Tamanho máximo do currículo (PDF, DOC ou DOCX) e da foto 3x4 (JPG ou PNG).', configurado: true },
     { id: 'smtp', aba: 'integracoes', sigla: 'SMTP', nome: 'E-mail (SMTP)', categoria: 'Comunicação', descricao: 'Envio dos códigos de acesso (2FA), convites e redefinição de senha.', configurado: smtp },
   ]);
 }));
 
-const GRUPOS = ['smtp', 'seguranca'] as const;
+const GRUPOS = ['smtp', 'seguranca', 'arquivos', 'privacidade'] as const;
 
 integracaoRouter.get('/config/:grupo', h(async (req, res) => {
   const grupo = parse(z.enum(GRUPOS), req.params.grupo);
@@ -41,7 +43,7 @@ integracaoRouter.get('/config/:grupo', h(async (req, res) => {
  */
 integracaoRouter.put('/config/:grupo', h(async (req, res) => {
   const grupo = parse(z.enum(GRUPOS), req.params.grupo);
-  const body = parse(z.record(z.string(), z.union([z.string().max(500), z.null()])), req.body);
+  const body = parse(z.record(z.string(), z.union([z.string().max(20_000), z.null()])), req.body);
   const smtpAntes = await smtpConfigurado();
   const alterados: string[] = [];
   await transaction(async (db) => {
@@ -87,7 +89,7 @@ const VARIAVEIS = [
   ['DATABASE_URL', true], ['PORT', false], ['APP_URL', false], ['NODE_ENV', false], ['SETTINGS_ENCRYPTION_KEY', true],
   ['DEVELOPER_EMAILS', false], ['ADMIN_EMAIL', false], ['ADMIN_INITIAL_PASSWORD', true], ['SESSION_TTL_HOURS', false],
   ['LOCK_IDLE_MINUTES', false], ['PIN_MAX_ATTEMPTS', false], ['SMTP_HOST', false], ['SMTP_PORT', false],
-  ['SMTP_SECURE', false], ['SMTP_USER', false], ['SMTP_PASS', true], ['SMTP_FROM', false], ['STORAGE_DIR', false],
+  ['SMTP_SECURE', false], ['SMTP_USER', false], ['SMTP_PASS', true], ['SMTP_FROM', false], ['STORAGE_DIR', false], ['CURRICULO_MAX_MB', false], ['FOTO_MAX_MB', false],
   ['TRUST_PROXY', false],
 ] as const;
 

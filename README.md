@@ -10,10 +10,11 @@ Desenvolvido por **Marcos Monteiro (TI - Tecnologia da Informação da Hummm! Pi
 |---|---|
 | 1. Planejamento e arquitetura | ✅ concluída |
 | 2A. Base padrão: servidor e banco | ✅ concluída |
-| **2B. Base padrão: telas** (login, 2FA, bloqueio, layout, Usuários e unidades, Dispositivos, Auditoria, Sistema, Integração, Minha conta, PWA, tema claro e escuro) | 🔄 este PR |
+| 2B. Base padrão: telas | ✅ concluída |
+| **3. Cadastro público do candidato** | 🔄 este PR |
 | 3 a 9 | veja o [plano](docs/PLANO.md) |
 
-Documentos: [Plano](docs/PLANO.md) · [Arquitetura](docs/ARQUITETURA.md) · [Modelo de dados](docs/MODELO-DE-DADOS.md) · [Telas](docs/TELAS.md) · [Decisões](docs/DECISOES.md) · [API da base](docs/API-BASE.md)
+Documentos: [Plano](docs/PLANO.md) · [Arquitetura](docs/ARQUITETURA.md) · [Modelo de dados](docs/MODELO-DE-DADOS.md) · [Telas](docs/TELAS.md) · [Decisões](docs/DECISOES.md) · [API da base](docs/API-BASE.md) · [Roteiro de testes](docs/ROTEIRO-DE-TESTES.md)
 
 ## Tecnologia
 
@@ -111,7 +112,8 @@ docs/                documentação e artefatos da plataforma
 | `LOCK_IDLE_MINUTES` | não | `10` | Minutos sem uso para bloquear a tela (tela) |
 | `PIN_MAX_ATTEMPTS` | não | `5` | Erros de PIN/senha no desbloqueio antes de encerrar a sessão (tela) |
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` | não | porta `587`, seguro `false` | E-mail (tela) |
-| `STORAGE_DIR` | não | `./storage` | Arquivos cifrados |
+| `STORAGE_DIR` | não | `./storage` | Arquivos cifrados (faça backup desta pasta junto com o banco) |
+| `CURRICULO_MAX_MB` / `FOTO_MAX_MB` | não | `10` / `5` | Tamanho máximo dos arquivos do candidato (tela) |
 | `TRUST_PROXY` | não | `1` | Proxies na frente do Node, para o IP real |
 
 ## Desenvolvimento local

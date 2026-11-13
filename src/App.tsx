@@ -1,8 +1,9 @@
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
+import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { Layout, useMenu } from './app/Layout';
 import { SessaoProvider, useSessao } from './app/sessao';
 import { Carregando, ToastProvider } from './components/ui';
 import { Login } from './pages/acesso/Login';
+import { Candidatura } from './pages/publico/Candidatura';
 import { DefinirSenha, TelaBloqueada, TrocarSenhaObrigatoria } from './pages/acesso/Senhas';
 import { Administracao } from './pages/administracao/Administracao';
 import { Auditoria } from './pages/auditoria/Auditoria';
@@ -26,6 +27,10 @@ export function App() {
 function Rotas() {
   const { sessao } = useSessao();
   const menu = useMenu();
+  const local = useLocation();
+
+  // Página pública do candidato: abre igual para todos, logado ou não.
+  if (local.pathname === '/candidatura') return <Candidatura />;
 
   if (!sessao) return <Carregando texto="Abrindo o aprovaRH..." />;
 
