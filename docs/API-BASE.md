@@ -60,3 +60,28 @@ Pedidos que alteram dados, vindos do navegador, precisam ter a origem igual ao `
 ```bash
 curl -H "Authorization: Bearer aprh_live_SUA_CHAVE" https://ENDERECO_DO_APROVARH/api/unidades
 ```
+
+## Central de RH (etapa 4A)
+
+Todas exigem `candidatos.ver` e respeitam as unidades da pessoa: candidato de outra unidade responde "não encontrado".
+
+| Método | Rota | O que faz | Permissão extra |
+|---|---|---|---|
+| GET | `/api/central/candidatos` | Lista estilo WhatsApp Web. Filtros: `busca` (nome, código; CPF ou telefone completos são comparados pelo hash), `unidadeId`, `statusId`, `tagId`, `de`, `ate`, `naoLidas=1`, `pagina` | |
+| GET | `/api/central/candidatos/:id` | Perfil lateral: dados, telefone, CPF mascarado, status, tags, linha do tempo, histórico de status, tags e candidaturas, arquivos e observações (auditado) | observações: `observacoes.ver` |
+| POST | `/api/central/candidatos/:id/cpf` | Mostra o CPF completo (auditado) | `candidatos.editar` |
+| GET | `/api/central/candidatos/:id/arquivos/:arquivoId` | Abre (`?baixar=1` baixa) currículo, foto ou anexo; confere o SHA-256; auditado. `?miniatura=1` (só foto) não gera registro | currículo/anexo: `candidatos.curriculo.baixar` |
+| PUT | `/api/central/candidatos/:id` | Corrige nome, sobrenome, telefone e unidade | `candidatos.editar` |
+| POST | `/api/central/candidatos/:id/status` | `{statusId, motivo?}`: grava o histórico (anterior, novo, quem, quando) e recalcula a linha do tempo | `status.alterar` |
+| POST | `/api/central/candidatos/:id/tags/adicionar` · `/tags/remover` | `{tagId}` com histórico | `status.alterar` |
+| PUT | `/api/central/candidatos/:id/etapas/:etapa` | Ajuste manual da linha do tempo (vale até a próxima mudança de status) | `status.alterar` |
+| POST / DELETE | `/api/central/candidatos/:id/observacoes[/:obsId]` | Observação interna (cifrada; cada pessoa exclui só as suas) | `observacoes.ver` |
+| GET | `/api/central/candidatos/:id/mensagens?antes=&limite=` | Mensagens da conversa única, em páginas | |
+| POST | `/api/central/candidatos/:id/mensagens` | `{texto}`: mensagem da gestora no chat interno | `conversas.responder` |
+| POST | `/api/central/candidatos/:id/mensagens/arquivo` | multipart `arquivo` (+ `legenda`): PDF, DOC, DOCX, JPG ou PNG | `conversas.responder` |
+| POST | `/api/central/candidatos/:id/lida` | Marca a conversa como lida (não lidas são por pessoa) | |
+| GET | `/api/central/config/status` · `/tags` | Status e tags disponíveis | |
+| POST / PUT / DELETE | `/api/central/config/status[/:id]` · `/tags[/:id]` | Criar, editar e excluir. Os 5 status iniciais não são excluídos | `status.configurar` |
+| GET | `/api/eventos` | Tempo real (Server-Sent Events): `mensagem.nova`, `candidato.atualizado`, `candidatura.nova`, `conversa.lida`. Só ids; os dados vêm das rotas acima | |
+
+> **Nginx:** para o tempo real, a rota `/api/eventos` não pode ficar presa no buffer. O servidor já envia `X-Accel-Buffering: no`; se o Nginx tiver `proxy_read_timeout` baixo, use pelo menos `75s`.

@@ -4,6 +4,7 @@ import { cfg } from '../../core/settings.ts';
 import { pool, transaction } from '../../db/pool.ts';
 import { type ArquivoGuardado, descartarArquivos, guardarArquivo, type TipoAceito } from '../../lib/arquivos.ts';
 import { encrypt, hmac, sha256 } from '../../lib/crypto.ts';
+import { publicar } from '../../core/tempoReal.ts';
 
 export interface NovaCandidatura {
   nome: string;
@@ -139,6 +140,16 @@ export async function registrarCandidatura(c: NovaCandidatura): Promise<{ tipo: 
         `INSERT INTO eventos_dominio (tipo, candidato_id, dados) VALUES ($1, $2, $3)`,
         [tipo === 'repetida' ? 'candidato.candidatura_repetida' : 'candidato.cadastrado', candidatoId, JSON.stringify({ unidadeId: c.unidadeId, tipo })],
       );
+
+      // Aviso automático na conversa (histórico da Central; não aparece para o candidato).
+      const textoSistema = { nova: 'Candidatura recebida pelo formulário.', repetida: 'O candidato enviou a candidatura de novo.', reaberta: 'O candidato voltou a se candidatar. Processo reaberto como "Novo candidato".' }[tipo];
+      const msg = await db.query<{ id: string; criado_em: Date }>(
+        `INSERT INTO mensagens (conversa_id, sentido, canal, autor_tipo, autor_nome, texto, visivel_ao_candidato)
+         SELECT id, 'entrada', 'sistema', 'sistema', 'Sistema', $2, false FROM conversas WHERE candidato_id = $1 RETURNING id, criado_em`,
+        [candidatoId, encrypt(textoSistema)],
+      );
+      await db.query('UPDATE conversas SET ultima_mensagem_id = $2, ultima_mensagem_em = $3 WHERE candidato_id = $1', [candidatoId, msg.rows[0].id, msg.rows[0].criado_em]);
+      await publicar(db, { tipo: 'candidatura.nova', candidatoId, unidadeId: existente.rowCount ? existente.rows[0].unidade_id : c.unidadeId });
 
       const avisos = [telefoneDiferente && 'telefone diferente do cadastro', unidadeDiferente && `pediu a unidade ${unidade.rows[0].nome}`].filter(Boolean).join('; ');
       const titulo = { nova: 'Nova candidatura', repetida: 'Candidatura enviada de novo', reaberta: 'Candidato voltou a se candidatar' }[tipo];

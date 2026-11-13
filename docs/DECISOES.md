@@ -23,3 +23,5 @@ Situação: **D** = decidido · **P** = proposta aguardando aprovação · **A d
 | D17 | Domínio e servidor de produção | **A definir** | Endereço do aprovaRH e porta na VPS compartilhada. |
 | D18 | Cronograma, custos e responsável pelos testes | **A definir** | Para o PDF de Cronograma e custos. |
 | D19 | Onde fica o aviso de privacidade | **P** | Por enquanto na tela Integração (só Desenvolvedor). Na etapa 4, a tela Configurações da Central de RH pode receber essa edição, se o RH for o responsável pelo texto. |
+| D20 | Linha do tempo × ajuste manual | **P** | A gestora pode ajustar uma etapa à mão; a próxima mudança de status recalcula todas as etapas a partir do status (o status é a fonte única). |
+| D21 | Auditoria da foto | **P** | Abrir ou baixar currículo, foto e anexos fica na auditoria. A miniatura da foto na lista e no perfil não gera registro (senão cada rolagem da lista viraria dezenas de registros). Abrir o perfil do candidato gera registro. |
