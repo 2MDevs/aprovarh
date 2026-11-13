@@ -36,7 +36,7 @@ export const mascararCpf = (final: string) => `•••.•••.•••-${f
  */
 export async function candidatoVisivel(u: UsuarioContexto, id: string, db: Db = pool, travar = false) {
   const { rows } = await db.query(
-    `SELECT c.*, s.nome AS status_nome, s.final AS status_final, un.nome AS unidade_nome
+    `SELECT c.*, s.nome AS status_nome, s.cor AS status_cor, s.final AS status_final, un.nome AS unidade_nome
        FROM candidatos c JOIN status s ON s.id = c.status_id JOIN unidades un ON un.id = c.unidade_id
       WHERE c.id = $1 AND c.excluido_em IS NULL AND ($2::uuid[] IS NULL OR c.unidade_id = ANY($2))
       ${travar ? 'FOR UPDATE OF c' : ''}`,

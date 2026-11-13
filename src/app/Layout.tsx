@@ -1,11 +1,12 @@
 import {
-  Bell, Building2, LogOut, Menu, Monitor, Moon, Plug, ScrollText, Server, Smartphone, Sun, UserRound, X,
+  Bell, Building2, LogOut, Menu, MessagesSquare, Monitor, Moon, Plug, ScrollText, Server, Settings2, Smartphone, Sun, UserRound, Users, X,
 } from 'lucide-react';
 import { useEffect, useState, type ReactNode } from 'react';
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
 import type { Permissao } from '@shared/permissoes';
 import { LogoHummm, NomePlataforma } from '../components/Marca';
 import { api } from '../lib/api';
+import { useEventos } from '../lib/eventos';
 import { relativo } from '../lib/formato';
 import { aplicarTema, temaSalvo, type Tema } from '../lib/tema';
 import { useSessao } from './sessao';
@@ -18,8 +19,13 @@ interface ItemMenu {
   somenteDesenvolvedor?: boolean;
 }
 
-/** Só aparecem as telas que já existem e que a pessoa pode usar. A Central de RH entra a partir da etapa 3. */
+/** Só aparecem as telas que já existem e que a pessoa pode usar. Visão geral, Entrevistas e Automações entram nas próximas etapas. */
 export const MENU: ItemMenu[] = [
+  // Central de RH
+  { rota: '/conversas', rotulo: 'Conversas', icone: <MessagesSquare className="size-5" />, permissao: 'candidatos.ver' },
+  { rota: '/candidatos', rotulo: 'Candidatos', icone: <Users className="size-5" />, permissao: 'candidatos.ver' },
+  { rota: '/configuracoes', rotulo: 'Configurações', icone: <Settings2 className="size-5" />, permissao: 'candidatos.ver' },
+  // Administração
   { rota: '/administracao', rotulo: 'Usuários e unidades', icone: <Building2 className="size-5" />, permissao: ['usuarios.gerenciar', 'unidades.gerenciar'] },
   { rota: '/dispositivos', rotulo: 'Dispositivos', icone: <Smartphone className="size-5" /> },
   { rota: '/auditoria', rotulo: 'Auditoria', icone: <ScrollText className="size-5" />, permissao: 'auditoria.ver' },
@@ -44,6 +50,8 @@ export function Layout() {
   const local = useLocation();
   useEffect(() => setAberto(false), [local.pathname]);
   const u = sessao!.usuario!;
+  // Conversas ocupa a altura toda da tela (lista, conversa e perfil com rolagem própria).
+  const telaCheia = local.pathname.startsWith('/conversas');
 
   const lateral = (
     <nav aria-label="Menu principal" className="flex h-full flex-col bg-grafite text-creme">
@@ -87,7 +95,7 @@ export function Layout() {
         </div>
       )}
 
-      <div className="flex min-w-0 flex-col">
+      <div className={`flex min-w-0 flex-col ${telaCheia ? 'h-dvh' : ''}`}>
         <header className="sticky top-0 z-30 flex items-center gap-2 border-b border-borda bg-fundo/90 px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur lg:px-8">
           <button className="grid size-11 place-items-center rounded-full hover:bg-superficie lg:hidden" onClick={() => setAberto(true)} aria-label="Abrir menu">
             {aberto ? <X className="size-5" /> : <Menu className="size-5" />}
@@ -106,7 +114,7 @@ export function Layout() {
           </div>
         )}
 
-        <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] lg:px-8 lg:py-8">
+        <main className={telaCheia ? 'min-h-0 flex-1' : 'mx-auto w-full max-w-6xl flex-1 px-4 py-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] lg:px-8 lg:py-8'}>
           <Outlet />
         </main>
       </div>
@@ -169,6 +177,12 @@ function Sino() {
   const [aviso, setAviso] = useState<AvisoAtualizacao | null>(null);
   const [naoLidas, setNaoLidas] = useState(0);
   const [lista, setLista] = useState<Notificacao[] | null>(null);
+  const { pode } = useSessao();
+
+  // Candidatura nova chega na hora (o aviso do sino é gravado na mesma transação).
+  useEventos((tipo) => {
+    if (tipo === 'candidatura.nova') api.get<{ naoLidas: number }>('/api/notificacoes/contagem').then((r) => setNaoLidas(r.naoLidas)).catch(() => {});
+  }, pode('candidatos.ver'));
 
   useEffect(() => {
     const ver = () => {

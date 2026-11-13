@@ -91,7 +91,7 @@ candidatosRouter.get('/', h(async (req, res) => {
     porPagina: f.porPagina,
     candidatos: lista.rows.map((r) => ({
       id: r.id, codigo: r.codigo, nome: `${r.nome} ${r.sobrenome}`, unidade: { id: r.unidade_id, nome: r.unidade },
-      status: { id: r.status_id, nome: r.status, cor: r.status_cor }, temFoto: Boolean(r.foto_id), tags: r.tags,
+      status: { id: r.status_id, nome: r.status, cor: r.status_cor }, fotoId: r.foto_id, tags: r.tags,
       candidaturaEm: r.candidatura_em, ultimaInteracaoEm: r.ultima_interacao_em, naoLidas: r.nao_lidas,
       ultimaMensagem: r.ult_em ? { texto: decifrarSeguro(r.ult_texto)?.slice(0, 140) ?? (r.ult_arquivo ? '📎 Arquivo' : ''), autor: r.ult_autor, em: r.ult_em } : null,
     })),
@@ -127,7 +127,7 @@ candidatosRouter.get('/:id', h(async (req, res) => {
     telefone: telefone ? formatarTelefone(telefone) : mascararTelefone(c.telefone_final),
     cpf: mascararCpf(c.cpf_final),
     unidade: { id: c.unidade_id, nome: c.unidade_nome },
-    status: { id: c.status_id, nome: c.status_nome, final: c.status_final },
+    status: { id: c.status_id, nome: c.status_nome, cor: c.status_cor, final: c.status_final },
     fotoId: c.foto_id, curriculoId: c.curriculo_id, candidaturaEm: c.candidatura_em, consentimentoEm: c.consentimento_em,
     tags: tags.rows,
     etapas: ETAPAS.map((e) => etapas.rows.find((r) => r.etapa === e) ?? { etapa: e, situacao: 'nao_iniciada', origem: 'automatica' }),
