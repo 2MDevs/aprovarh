@@ -1,0 +1,88 @@
+@import "tailwindcss";
+@import "@fontsource/poppins/300.css";
+@import "@fontsource/poppins/400.css";
+@import "@fontsource/poppins/500.css";
+@import "@fontsource/poppins/600.css";
+@import "@fontsource/poppins/700.css";
+
+/* As classes dark: seguem a classe .dark no <html> (botão de tema) */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/*
+ * Identidade visual Hummm! Pizzas aplicada ao aprovaRH.
+ * Tokens semânticos: as telas usam "fundo", "superficie", "texto"... e o tema escuro troca os valores.
+ */
+@theme {
+  --font-sans: "Poppins", system-ui, -apple-system, "Segoe UI", sans-serif;
+
+  --color-amarelo: #F6D35C;
+  --color-amarelo-forte: #E9BD2B;
+  --color-vermelho: #EA3324;
+  --color-creme: #FDF8CF;
+  --color-grafite: #1D1D1B;
+  --color-verde: #1F7A4D;
+
+  --color-fundo: var(--arh-fundo);
+  --color-superficie: var(--arh-superficie);
+  --color-superficie-2: var(--arh-superficie-2);
+  --color-borda: var(--arh-borda);
+  --color-texto: var(--arh-texto);
+  --color-suave: var(--arh-suave);
+  --color-destaque: var(--arh-destaque);
+  --color-destaque-texto: var(--arh-destaque-texto);
+}
+
+:root {
+  --arh-fundo: #F6F4EE;
+  --arh-superficie: #FFFFFF;
+  --arh-superficie-2: #FBFAF6;
+  --arh-borda: #E7E3D8;
+  --arh-texto: #1D1D1B;
+  --arh-suave: #6B675E;
+  --arh-destaque: #1D1D1B;        /* botão principal: grafite */
+  --arh-destaque-texto: #FFFFFF;
+  color-scheme: light;
+}
+
+.dark {
+  --arh-fundo: #141413;
+  --arh-superficie: #1E1E1C;
+  --arh-superficie-2: #252522;
+  --arh-borda: #34332F;
+  --arh-texto: #F3F1EA;
+  --arh-suave: #A7A398;
+  --arh-destaque: #F6D35C;        /* no escuro o botão principal vira amarelo */
+  --arh-destaque-texto: #1D1D1B;
+  color-scheme: dark;
+}
+
+@layer base {
+  html, body, #root { min-height: 100dvh; }
+  body {
+    @apply bg-fundo text-texto font-sans antialiased;
+    -webkit-tap-highlight-color: transparent;
+  }
+  /* Foco sempre visível no teclado */
+  :focus-visible { outline: 3px solid var(--color-amarelo); outline-offset: 2px; border-radius: 10px; }
+  /* Campos com 16px no celular: evita o zoom automático do iPhone */
+  @media (max-width: 639px) {
+    input, select, textarea { font-size: 16px !important; }
+  }
+}
+
+@layer components {
+  .campo {
+    @apply w-full rounded-xl border border-borda bg-superficie-2 px-3.5 py-2.5 text-[15px] text-texto
+      placeholder:text-suave/70 transition focus:border-amarelo-forte focus:outline-none focus:ring-4 focus:ring-amarelo/25
+      disabled:opacity-60;
+  }
+  .rotulo { @apply mb-1.5 block text-sm font-semibold text-texto; }
+  .cartao { @apply rounded-2xl border border-borda bg-superficie shadow-[0_1px_2px_rgba(29,29,27,0.04)]; }
+}
+
+/* Faixa de assinatura da marca (vermelho → amarelo) */
+.faixa-marca { background: linear-gradient(90deg, var(--color-vermelho) 0 35%, var(--color-amarelo) 35% 100%); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}

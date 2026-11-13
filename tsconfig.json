@@ -3,7 +3,10 @@
     "target": "ES2023",
     "module": "ESNext",
     "moduleResolution": "Bundler",
-    "lib": ["ES2023", "DOM"],
+    "lib": [
+      "ES2023",
+      "DOM"
+    ],
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
@@ -12,7 +15,19 @@
     "allowImportingTsExtensions": true,
     "noEmit": true,
     "jsx": "react-jsx",
-    "types": ["node"]
+    "types": [
+      "node"
+    ],
+    "paths": {
+      "@shared/*": [
+        "./shared/*"
+      ]
+    }
   },
-  "include": ["server", "shared"]
+  "include": [
+    "server",
+    "shared",
+    "src",
+    "vite.config.ts"
+  ]
 }

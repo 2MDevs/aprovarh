@@ -9,15 +9,15 @@ Desenvolvido por **Marcos Monteiro (TI - Tecnologia da Informação da Hummm! Pi
 | Etapa | Situação |
 |---|---|
 | 1. Planejamento e arquitetura | ✅ concluída |
-| **2A. Base padrão: servidor e banco** | 🔄 este PR |
-| 2B. Base padrão: telas (login, layout, Sistema, Integração, Auditoria, Dispositivos, Usuários e unidades, PWA, temas) | próxima |
+| 2A. Base padrão: servidor e banco | ✅ concluída |
+| **2B. Base padrão: telas** (login, 2FA, bloqueio, layout, Usuários e unidades, Dispositivos, Auditoria, Sistema, Integração, Minha conta, PWA, tema claro e escuro) | 🔄 este PR |
 | 3 a 9 | veja o [plano](docs/PLANO.md) |
 
 Documentos: [Plano](docs/PLANO.md) · [Arquitetura](docs/ARQUITETURA.md) · [Modelo de dados](docs/MODELO-DE-DADOS.md) · [Telas](docs/TELAS.md) · [Decisões](docs/DECISOES.md) · [API da base](docs/API-BASE.md)
 
 ## Tecnologia
 
-Node.js 22 + Express (executado com tsx) · PostgreSQL · React + Vite + Tailwind (etapa 2B). Infraestrutura padrão da Hummm! Pizzas; o DocSecure é o modelo.
+Node.js 22 + Express (executado com tsx) · PostgreSQL · React + Vite + Tailwind CSS 4 · fonte Poppins (@fontsource) · ícones lucide-react. Infraestrutura padrão da Hummm! Pizzas; o DocSecure é o modelo.
 
 ```
 server/
@@ -31,6 +31,12 @@ server/
   middleware/        sessão, permissões, origem (CSRF), limites
   modules/<área>/    rotas de cada área
 shared/permissoes.ts catálogo único de permissões (servidor e telas)
+src/                 telas (React)
+  app/               sessão, layout e menu
+  components/        botões, campos, modais, avisos, marca
+  pages/<área>/      cada tela
+  lib/               cliente da API, datas, tema
+public/              logo oficial (brand/), ícones do PWA, manifest, service worker
 scripts/             atualização pelo GitHub (update.sh, install-auto-update.sh)
 docs/                documentação e artefatos da plataforma
 ```
@@ -51,6 +57,7 @@ docs/                documentação e artefatos da plataforma
    npm install
    cp .env.example .env && nano .env   # preencha as variáveis (tabela abaixo)
    npm run migrate
+   npm run build        # gera as telas em dist/
    ```
 3. **Serviços** (API e worker), em `/etc/systemd/system/`:
    ```ini
@@ -107,7 +114,15 @@ docs/                documentação e artefatos da plataforma
 | `STORAGE_DIR` | não | `./storage` | Arquivos cifrados |
 | `TRUST_PROXY` | não | `1` | Proxies na frente do Node, para o IP real |
 
-## Segurança implementada nesta etapa
+## Desenvolvimento local
+
+```bash
+npm install
+npm run dev        # API em http://127.0.0.1:PORT
+npm run dev:web    # telas com recarga automática (Vite), encaminhando /api para a API
+```
+
+## Segurança implementada na base
 
 - Senhas e PIN com bcrypt; regra de 10+ caracteres com letras e números.
 - 5 senhas erradas bloqueiam a conta por 15 min; 10 tentativas a cada 15 min por IP em login, 2FA, senha, PIN e reautenticação.
