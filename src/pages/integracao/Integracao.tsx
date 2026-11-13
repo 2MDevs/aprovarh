@@ -7,12 +7,12 @@ import { api, ApiError } from '../../lib/api';
 import { normalizar } from '../../lib/formato';
 import { useDados } from '../../lib/useDados';
 import { CORES } from './cores';
-import { ModalAdmin, ModalAtualizacao, ModalEnv, ModalSeguranca, ModalSmtp } from './Modais';
+import { ModalAdmin, ModalArquivos, ModalAtualizacao, ModalEnv, ModalPrivacidade, ModalSeguranca, ModalSmtp } from './Modais';
 
 export interface CardIntegracao { id: string; aba: 'geral' | 'integracoes'; sigla: string; nome: string; categoria: string; descricao: string; configurado: boolean }
 
 
-const SITUACAO: Record<string, [string, string]> = { atualizacao: ['Ligado', 'Desligado'], seguranca: ['Configurada', 'Padrão'], env: ['Ver', 'Ver'] };
+const SITUACAO: Record<string, [string, string]> = { atualizacao: ['Ligado', 'Desligado'], seguranca: ['Configurada', 'Padrão'], env: ['Ver', 'Ver'], privacidade: ['Publicado', 'Formulário fechado'] };
 
 export function Integracao() {
   const { sessao } = useSessao();
@@ -147,6 +147,8 @@ function Telas({ onExpirou }: { onExpirou: () => void }) {
       {abrir === 'admin' && <ModalAdmin onFechar={fechar} onErro={aoErro} />}
       {abrir === 'env' && <ModalEnv onFechar={fechar} onErro={aoErro} />}
       {abrir === 'smtp' && <ModalSmtp onFechar={fechar} onErro={aoErro} />}
+      {abrir === 'privacidade' && <ModalPrivacidade onFechar={fechar} onErro={aoErro} />}
+      {abrir === 'arquivos' && <ModalArquivos onFechar={fechar} onErro={aoErro} />}
     </>
   );
 }

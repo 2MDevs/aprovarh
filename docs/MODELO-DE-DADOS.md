@@ -17,7 +17,8 @@ Convenções: ids `uuid`; datas `timestamptz` (gravadas em UTC; exibidas e calcu
 
 | Tabela | Campos principais |
 |---|---|
-| `candidatos` | codigo_interno (sequencial legível, ex.: C-000123, **nunca usado como acesso**), nome, sobrenome, telefone 🔒, telefone_hash (busca), unidade_id, status_id, candidatura_em, consentimento_lgpd_em, versao_aviso_privacidade, origem (link público), excluido_em |
+| `candidatos` | codigo (sequencial legível, ex.: C-000123, **nunca usado como acesso**), nome, sobrenome, **cpf 🔒, cpf_hash (único: uma ficha por CPF)**, telefone 🔒, telefone_hash (busca), unidade_id, status_id, candidatura_em, consentimento_lgpd_em, versao_aviso_privacidade, origem (link público), excluido_em |
+| `candidaturas` | cada envio do formulário: tipo (nova / repetida / reaberta), nome e telefone 🔒 informados, se diferem da ficha, unidade pedida, arquivos, IP |
 | `candidato_arquivos` | candidato_id, tipo (`curriculo`, `foto`, `anexo`), arquivo_id, enviado_por (candidato / gestora) |
 | `observacoes` | candidato_id, texto 🔒, autor_id. **Nunca aparecem no portal** |
 | `status` | nome, cor, ordem, final (sim/não), chave_sistema (para os 5 iniciais), ativo; **ligação com a linha do tempo**: etapa e situação que o status representa no portal |

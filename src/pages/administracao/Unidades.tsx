@@ -1,4 +1,4 @@
-import { Pencil, Plus, Trash2 } from 'lucide-react';
+import { Copy, Link2, Pencil, Plus, Trash2 } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 import { Aviso, Botao, Campo, Carregando, Confirmar, ErroCarregar, Interruptor, Modal, Selo, useAviso, Vazio } from '../../components/ui';
 import { api, ApiError } from '../../lib/api';
@@ -32,8 +32,20 @@ export function Unidades() {
     }
   };
 
+  const linkGeral = `${window.location.origin}/candidatura`;
+  const copiar = (texto: string) => navigator.clipboard.writeText(texto).then(() => avisar('Link copiado.'), () => avisar('Não foi possível copiar.', 'erro'));
+
   return (
     <div className="space-y-4">
+      <div className="cartao flex flex-col gap-3 p-5 sm:flex-row sm:items-center">
+        <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-creme text-grafite dark:bg-amarelo/15 dark:text-amarelo"><Link2 className="size-5" /></span>
+        <div className="min-w-0 flex-1">
+          <p className="font-semibold">Link público de candidatura</p>
+          <p className="truncate font-mono text-sm text-suave">{linkGeral}</p>
+          <p className="text-xs text-suave">O formulário só abre com o aviso de privacidade publicado (Integração) e pelo menos uma unidade ativa. Cada unidade tem também o próprio link, que já chega com a loja escolhida.</p>
+        </div>
+        <Botao variante="secundario" icone={<Copy className="size-4" />} onClick={() => void copiar(linkGeral)}>Copiar</Botao>
+      </div>
       <div className="flex justify-end">
         <Botao icone={<Plus className="size-4" />} onClick={() => setEditando('nova')}>Nova unidade</Botao>
       </div>
@@ -48,6 +60,7 @@ export function Unidades() {
                 <p className="text-xs text-suave">Cadastrada em {data(u.criadoEm)}</p>
               </div>
               <Selo tom={u.ativa ? 'verde' : 'cinza'}>{u.ativa ? 'Ativa' : 'Inativa'}</Selo>
+              {u.ativa && <Botao variante="fantasma" aria-label={`Copiar link de candidatura de ${u.nome}`} title="Copiar link desta unidade" icone={<Link2 className="size-4" />} onClick={() => void copiar(`${linkGeral}?unidade=${u.id}`)} />}
               <Botao variante="secundario" icone={<Pencil className="size-4" />} onClick={() => setEditando(u)}>Editar</Botao>
               <Botao variante="fantasma" aria-label={`Excluir ${u.nome}`} icone={<Trash2 className="size-4 text-vermelho" />} onClick={() => setExcluir(u)} />
             </li>
