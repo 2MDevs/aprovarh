@@ -8,6 +8,7 @@ import { pool, transaction } from '../../db/pool.ts';
 import { badRequest, h, HttpError, notFound, parse } from '../../lib/http.ts';
 import { exigirDesenvolvedor, exigirLogin, exigirReautenticacao } from '../../middleware/auth.ts';
 import { enviarLinkDeSenha } from '../auth/service.ts';
+import { whatsappConfigurado } from '../whatsapp/cliente.ts';
 
 /**
  * Tela Integração (somente Desenvolvedor; senha reconfirmada a cada 10 minutos).
@@ -26,11 +27,12 @@ integracaoRouter.get('/cards', h(async (_req, res) => {
     { id: 'env', aba: 'geral', sigla: 'ENV', nome: 'Variáveis do .env', categoria: 'Sistema', descricao: 'Mostra quais variáveis estão definidas, sem mostrar valores secretos.', configurado: true },
     { id: 'privacidade', aba: 'geral', sigla: 'LGPD', nome: 'Aviso de privacidade', categoria: 'Cadastro de candidatos', descricao: 'Texto que o candidato aceita antes de enviar a candidatura. Sem ele, o formulário fica fechado.', configurado: Boolean(await cfg('privacidade.aviso')) },
     { id: 'arquivos', aba: 'geral', sigla: 'ARQ', nome: 'Arquivos do candidato', categoria: 'Cadastro de candidatos', descricao: 'Tamanho máximo do currículo (PDF, DOC ou DOCX) e da foto 3x4 (JPG ou PNG).', configurado: true },
+    { id: 'whatsapp', aba: 'integracoes', sigla: 'WA', nome: 'WhatsApp', categoria: 'Comunicação', descricao: 'Códigos de acesso, confirmação de entrevistas e conversas com os candidatos. Provedor: Meta (oficial) ou Evolution API.', configurado: await whatsappConfigurado() },
     { id: 'smtp', aba: 'integracoes', sigla: 'SMTP', nome: 'E-mail (SMTP)', categoria: 'Comunicação', descricao: 'Envio dos códigos de acesso (2FA), convites e redefinição de senha.', configurado: smtp },
   ]);
 }));
 
-const GRUPOS = ['smtp', 'seguranca', 'arquivos', 'privacidade'] as const;
+const GRUPOS = ['smtp', 'seguranca', 'arquivos', 'privacidade', 'whatsapp'] as const;
 
 integracaoRouter.get('/config/:grupo', h(async (req, res) => {
   const grupo = parse(z.enum(GRUPOS), req.params.grupo);
@@ -50,6 +52,8 @@ integracaoRouter.put('/config/:grupo', h(async (req, res) => {
     for (const [chave, valor] of Object.entries(body)) {
       if (!ehChaveConfig(chave) || DEFINICOES[chave].grupo !== grupo) throw badRequest(`Campo desconhecido: ${chave}`);
       if (DEFINICOES[chave].tipo === 'segredo' && valor === '') continue;
+      if (chave === 'whatsapp.provedor' && valor && !['meta', 'evolution'].includes(valor)) throw badRequest('Provedor inválido: use "meta" ou "evolution".');
+      if (chave === 'whatsapp.evolution_url' && valor && !valor.startsWith('https://')) throw badRequest('O endereço da Evolution API precisa começar com https://.');
       try {
         await gravarConfig(db, chave, valor, req.usuario!.id);
       } catch (err) {
@@ -90,7 +94,7 @@ const VARIAVEIS = [
   ['DEVELOPER_EMAILS', false], ['ADMIN_EMAIL', false], ['ADMIN_INITIAL_PASSWORD', true], ['SESSION_TTL_HOURS', false],
   ['LOCK_IDLE_MINUTES', false], ['PIN_MAX_ATTEMPTS', false], ['SMTP_HOST', false], ['SMTP_PORT', false],
   ['SMTP_SECURE', false], ['SMTP_USER', false], ['SMTP_PASS', true], ['SMTP_FROM', false], ['STORAGE_DIR', false], ['CURRICULO_MAX_MB', false], ['FOTO_MAX_MB', false],
-  ['TRUST_PROXY', false],
+  ['TRUST_PROXY', false], ['WHATSAPP_PROVIDER', false], ['WHATSAPP_PHONE_NUMBER_ID', false], ['WHATSAPP_WABA_ID', false], ['WHATSAPP_TOKEN', true], ['WHATSAPP_APP_SECRET', true], ['WHATSAPP_VERIFY_TOKEN', true], ['EVOLUTION_URL', false], ['EVOLUTION_INSTANCE', false], ['EVOLUTION_APIKEY', true], ['EVOLUTION_WEBHOOK_TOKEN', true],
 ] as const;
 
 integracaoRouter.get('/env', h(async (req, res) => {

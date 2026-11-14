@@ -28,7 +28,7 @@ export async function avisoAtual(): Promise<{ texto: string; versao: string; con
 const ATOR_FORMULARIO = { usuarioNome: 'Formulário público de candidatura' };
 
 /** Avisa no sino quem atende candidatos daquela unidade. */
-async function notificarGestoras(db: PoolClient, unidadeId: string, titulo: string, texto: string, link: string) {
+export async function notificarGestoras(db: PoolClient, unidadeId: string, titulo: string, texto: string, link: string) {
   await db.query(
     `INSERT INTO notificacoes (usuario_id, tipo, titulo, texto, link)
      SELECT u.id, 'candidatura', $2, $3, $4

@@ -10,6 +10,7 @@ import { badRequest, forbidden, h, ipDe, notFound, parse } from '../../lib/http.
 import { exigirLogin, exigirPermissao } from '../../middleware/auth.ts';
 import { env } from '../../config/env.ts';
 import { liberarAcesso, revogarAcesso } from '../portal/servico.ts';
+import { enfileirar } from '../whatsapp/envio.ts';
 import {
   avisarMudanca, candidatoVisivel, decifrarSeguro, ETAPAS, formatarTelefone, mascararCpf, mascararTelefone,
   recalcularLinhaDoTempo, registrarEvento,
@@ -335,20 +336,29 @@ candidatosRouter.delete('/:id/observacoes/:obsId', exigirPermissao('observacoes.
  */
 candidatosRouter.post('/:id/acesso', exigirPermissao('portal.liberar'), h(async (req, res) => {
   const id = parse(uuid, req.params.id);
-  const { permiteArquivo } = parse(z.object({ permiteArquivo: z.boolean().default(false) }), req.body);
+  const { permiteArquivo, enviarWhatsapp } = parse(z.object({ permiteArquivo: z.boolean().default(false), enviarWhatsapp: z.boolean().default(false) }), req.body);
+  const link = `${env.APP_URL.replace(/\/$/, '')}/acesso`;
   const r = await transaction(async (db) => {
     const c = await candidatoVisivel(req.usuario!, id, db, true);
     const ator = { usuarioId: req.usuario!.id, usuarioNome: req.usuario!.nome, perfil: req.usuario!.perfilNome, setor: req.usuario!.setor };
     const lib = await liberarAcesso(db, id, c.unidade_id, { tipo: 'usuario', usuarioId: req.usuario!.id, ator }, { permiteArquivo }, ipDe(req));
+    if (enviarWhatsapp) {
+      // O código vai só na fila (cifrado, apagado depois do envio); na conversa fica mascarado.
+      await enfileirar(db, {
+        candidatoId: id, conteudo: { tipo: 'aviso', finalidade: 'codigo', variaveis: { nome: c.nome, codigo: lib.codigo, link } },
+        autor: { tipo: 'chatbot', nome: 'Assistente virtual' }, chaveIdempotencia: `codigo:${lib.liberacaoId}`,
+        textoNaConversa: `Código de acesso ao portal enviado (válido até 23h59 de hoje): ••••-••••. Link: ${link}`,
+      });
+    }
     return { ...lib, nome: c.nome };
   });
-  const link = `${env.APP_URL.replace(/\/$/, '')}/acesso`;
   res.status(201).json({
-    codigo: r.codigo,
+    enviadoPorWhatsapp: enviarWhatsapp,
+    codigo: enviarWhatsapp ? null : r.codigo, // enviado pelo WhatsApp: não aparece para ninguém
     expiraEm: r.expiraEm,
     link,
-    mensagemSugerida: `Olá, ${r.nome}! Para acompanhar sua candidatura na Hummm! Pizzas, acesse ${link} e use o código ${r.codigo}. Ele vale até as 23h59 de hoje.`,
-    aviso: 'O código aparece só agora. Ele não fica guardado no sistema.',
+    mensagemSugerida: enviarWhatsapp ? null : `Olá, ${r.nome}! Para acompanhar sua candidatura na Hummm! Pizzas, acesse ${link} e use o código ${r.codigo}. Ele vale até as 23h59 de hoje.`,
+    aviso: enviarWhatsapp ? 'Código enviado pelo WhatsApp. Ele não aparece aqui nem fica guardado no sistema.' : 'O código aparece só agora. Ele não fica guardado no sistema.',
   });
 }));
 

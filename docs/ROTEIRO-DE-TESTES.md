@@ -159,3 +159,20 @@ Marque cada item ao testar. Se algo não sair como esperado, registre: **o que v
 ### Portal
 - [ ] O candidato vê o cartão "Sua entrevista" com data, horário, unidade e local, e "Aguardando sua confirmação" ou "Confirmada".
 - [ ] Os avisos de agendamento, remarcação, confirmação e cancelamento aparecem no chat do portal.
+
+## Etapa 7A: WhatsApp (servidor)
+
+Antes: configure um dos provedores conforme [WHATSAPP.md](WHATSAPP.md). As telas chegam na 7B; até lá, os testes usam a Integração (cartão WhatsApp) e as opções já existentes.
+
+1. **Situação:** entre como Desenvolvedor. Em Integração, o cartão **WhatsApp** mostra o provedor e o que falta configurar.
+2. **Teste de conexão:** com a Meta, deve mostrar os dados do número. Com a Evolution, deve dizer que a instância está **conectada**.
+3. **Webhook recusado:** chame `POST /api/webhooks/evolution` sem o cabeçalho `x-aprovarh-token`, ou o webhook da Meta sem assinatura. Deve responder 401/403 e aparecer na Auditoria.
+4. **Mensagem recebida:** de um celular cadastrado como candidato, envie "Oi". Ela aparece na conversa do candidato em segundos, marcada como WhatsApp.
+5. **Número desconhecido:** escreva de um número que não é de candidato. Ele não cria candidato e fica em "Contatos não identificados".
+6. **Código pelo WhatsApp:** libere o acesso ao portal com `enviarWhatsapp`. O candidato recebe o código, e a conversa mostra `••••-••••`.
+7. **Entrevista:** agende com `enviarWhatsapp`. O candidato recebe a pergunta.
+   - Responda **SIM**: a entrevista fica "confirmada" e a gestora é avisada.
+   - Agende outra e responda **NÃO**: o sistema oferece o período de datas. Responda "dia 20 às 14h": se houver vaga, a entrevista é remarcada e confirmada. Se não houver, ele pede outra data.
+   - Responda algo confuso ("talvez"): ele pede esclarecimento.
+8. **Fila:** com o provedor desligado (por exemplo, a instância da Evolution desconectada), envie algo. Ele fica pendente e é tentado de novo. Depois do limite, aparece "Falhou" na conversa.
+9. **Sem duplicar:** reenvie o mesmo webhook (mesmo id de mensagem). A mensagem não aparece duas vezes.

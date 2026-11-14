@@ -59,7 +59,7 @@ export const carregarSessao: RequestHandler = h(async (req, res, next) => {
   if (!bloqueada && ocioso) {
     bloqueada = true;
     await pool.query('UPDATE sessoes SET bloqueada_em = now() WHERE id = $1 AND bloqueada_em IS NULL', [s.id]);
-  } else if (!bloqueada && !SEM_RENOVACAO.has(req.path) && Date.now() - new Date(s.ultimo_uso_em).getTime() > 30_000) {
+  } else if (!bloqueada && !SEM_RENOVACAO.has(req.originalUrl.split('?')[0]) && Date.now() - new Date(s.ultimo_uso_em).getTime() > 30_000) {
     // Renova a validade a cada uso (no máximo uma escrita a cada 30 s).
     const novaValidade = new Date(Date.now() + ttlHoras * 3_600_000);
     await pool.query('UPDATE sessoes SET ultimo_uso_em = now(), expira_em = $2, ip = $3 WHERE id = $1', [s.id, novaValidade, ipDe(req)]);
@@ -163,7 +163,7 @@ export const exigirReautenticacao: RequestHandler = (req, _res, next) => {
 const ORIGEM = new URL(env.APP_URL).origin;
 export const conferirOrigem: RequestHandler = (req, _res, next) => {
   if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) return next();
-  if (req.path.startsWith('/api/webhooks/')) return next(); // conferidos por assinatura própria
+  if (req.originalUrl.startsWith('/api/webhooks/')) return next(); // conferidos por assinatura própria
   let origem = req.get('origin') || null;
   if (!origem && req.get('referer')) {
     try {
