@@ -15,10 +15,12 @@ Desenvolvido por **Marcos Monteiro (TI - Tecnologia da Informação da Hummm! Pi
 | 4A. Central de RH: servidor | ✅ concluída |
 | 4B. Central de RH: telas | ✅ concluída |
 | 5. Portal temporário do candidato | ✅ concluída |
-| **6. Agendamento de entrevistas** | 🔄 este PR |
+| 6. Agendamento de entrevistas | ✅ concluída |
+| **7A. WhatsApp: servidor** (Meta oficial ou Evolution API) | 🔄 este PR |
+| 7B. WhatsApp: telas | próxima |
 | 3 a 9 | veja o [plano](docs/PLANO.md) |
 
-Documentos: [Plano](docs/PLANO.md) · [Arquitetura](docs/ARQUITETURA.md) · [Modelo de dados](docs/MODELO-DE-DADOS.md) · [Telas](docs/TELAS.md) · [Decisões](docs/DECISOES.md) · [API da base](docs/API-BASE.md) · [Roteiro de testes](docs/ROTEIRO-DE-TESTES.md)
+Documentos: [Plano](docs/PLANO.md) · [Arquitetura](docs/ARQUITETURA.md) · [Modelo de dados](docs/MODELO-DE-DADOS.md) · [Telas](docs/TELAS.md) · [Decisões](docs/DECISOES.md) · [API da base](docs/API-BASE.md) · [Roteiro de testes](docs/ROTEIRO-DE-TESTES.md) · [WhatsApp](docs/WHATSAPP.md)
 
 ## Tecnologia
 
@@ -117,6 +119,7 @@ docs/                documentação e artefatos da plataforma
 | `PIN_MAX_ATTEMPTS` | não | `5` | Erros de PIN/senha no desbloqueio antes de encerrar a sessão (tela) |
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` | não | porta `587`, seguro `false` | E-mail (tela) |
 | `STORAGE_DIR` | não | `./storage` | Arquivos cifrados (faça backup desta pasta junto com o banco) |
+| `WHATSAPP_PROVIDER` e demais `WHATSAPP_*` / `EVOLUTION_*` | não | provedor `meta` | WhatsApp (tela). Ver [docs/WHATSAPP.md](docs/WHATSAPP.md) |
 | `CURRICULO_MAX_MB` / `FOTO_MAX_MB` | não | `10` / `5` | Tamanho máximo dos arquivos do candidato (tela) |
 | `TRUST_PROXY` | não | `1` | Proxies na frente do Node, para o IP real |
 

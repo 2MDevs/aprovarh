@@ -19,6 +19,7 @@ import { sistemaRouter } from './modules/sistema/routes.ts';
 import { publicoRouter } from './modules/publico/routes.ts';
 import { portalRouter } from './modules/portal/routes.ts';
 import { entrevistasRouter } from './modules/entrevistas/routes.ts';
+import { webhooksRouter, whatsappCentralRouter, whatsappIntegracaoRouter } from './modules/whatsapp/routes.ts';
 import { candidatosRouter } from './modules/central/candidatos.ts';
 import { configCentralRouter } from './modules/central/configuracao.ts';
 import { conversasRouter } from './modules/central/conversas.ts';
@@ -48,6 +49,8 @@ export function criarApp() {
       crossOriginEmbedderPolicy: false,
     }),
   );
+  // Webhooks do WhatsApp antes do leitor de JSON: a Meta assina o corpo bruto.
+  app.use('/api/webhooks', limiteGeral, webhooksRouter);
   app.use(express.json({ limit: '1mb' }));
   app.use(cookieParser());
 
@@ -69,11 +72,13 @@ export function criarApp() {
   app.use('/api/auditoria', auditoriaRouter);
   app.use('/api/sistema', sistemaRouter);
   app.use('/api/sistema/api', apiRouter);
+  app.use('/api/integracao/whatsapp', whatsappIntegracaoRouter);
   app.use('/api/integracao', integracaoRouter);
   app.use('/api/atualizacao', atualizacaoRouter);
   app.use('/api/notificacoes', notificacoesRouter);
   app.use('/api/central/config', configCentralRouter);
   app.use('/api/entrevistas', entrevistasRouter);
+  app.use('/api/central/whatsapp', whatsappCentralRouter);
   app.use('/api/central/candidatos', conversasRouter);
   app.use('/api/central/candidatos', candidatosRouter);
   app.get('/api/eventos', exigirLogin(), rotaEventos);

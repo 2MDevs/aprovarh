@@ -119,3 +119,19 @@ Todas exigem `candidatos.ver` e respeitam as unidades da pessoa.
 | POST | `/api/entrevistas/:id/remarcar` | `{inicioEm, motivo?}` | `entrevistas.agendar` |
 
 O portal (`GET /api/portal/sessao`) passa a mandar `entrevista`: data, horário, duração, unidade, local e se está confirmada.
+
+## WhatsApp (etapa 7A) — detalhes em [WHATSAPP.md](WHATSAPP.md)
+
+| Método | Rota | O que faz |
+|---|---|---|
+| GET | `/api/webhooks/whatsapp` | Meta: verificação do webhook (`hub.verify_token`) |
+| POST | `/api/webhooks/whatsapp` | Meta: mensagens e situação de entrega (assinatura `X-Hub-Signature-256`) |
+| POST | `/api/webhooks/evolution` (ou `/evolution/:evento`) | Evolution: `messages.upsert` e `messages.update` (cabeçalho `x-aprovarh-token`) |
+| GET | `/api/integracao/whatsapp/situacao` | Provedor, configurado, o que falta, endereço do webhook, fila e eventos (Desenvolvedor) |
+| POST | `/api/integracao/whatsapp/testar` | Teste de conexão (Meta: dados do número; Evolution: instância conectada) |
+| POST / GET | `/api/integracao/whatsapp/modelos[/sincronizar]` | Modelos da conta Meta |
+| GET | `/api/central/whatsapp/candidatos/:id` | Configurado? Janela aberta? Pode escrever texto livre? |
+| POST | `/api/central/whatsapp/candidatos/:id/mensagens` | `{texto}` pela fila (`conversas.responder`) |
+| GET | `/api/central/whatsapp/nao-identificados` · POST `/:id/arquivar` | Números que escreveram e não são de candidatos |
+
+Opções novas: `POST /api/central/candidatos/:id/acesso` aceita `enviarWhatsapp`; `POST /api/entrevistas/candidato/:id` e `/api/entrevistas/:id/remarcar` aceitam `enviarWhatsapp`.

@@ -1,6 +1,8 @@
 import { migrate } from './db/migrate.ts';
 import { pool, transaction } from './db/pool.ts';
 import { expirarLiberacoes } from './modules/portal/servico.ts';
+import { processarFila } from './modules/whatsapp/envio.ts';
+import { processarEntradas } from './modules/whatsapp/entrada.ts';
 
 /**
  * Worker: rotinas em segundo plano, em processo separado da API.
@@ -16,6 +18,26 @@ interface Rotina {
 }
 
 const rotinas: Rotina[] = [
+  {
+    // Mensagens recebidas pelo WhatsApp (guardadas pelo webhook) e respostas automáticas da entrevista.
+    nome: 'whatsapp-entrada',
+    intervaloMs: 3_000,
+    trava: 7240103,
+    executar: async () => {
+      const n = await processarEntradas();
+      if (n) return `${n} evento(s) do WhatsApp processado(s)`;
+    },
+  },
+  {
+    // Fila de envio do WhatsApp (com novas tentativas).
+    nome: 'whatsapp-envio',
+    intervaloMs: 3_000,
+    trava: 7240104,
+    executar: async () => {
+      const n = await processarFila();
+      if (n) return `${n} mensagem(ns) enviada(s) pelo WhatsApp`;
+    },
+  },
   {
     // O acesso já é barrado em toda requisição às 23:59:59; aqui as liberações viram "expirada",
     // as sessões são encerradas e o evento "Acesso expirado" é gerado para as automações.

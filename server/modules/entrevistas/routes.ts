@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import type { PoolClient } from 'pg';
 import { z } from 'zod';
 import { enxergaUnidade, filtroUnidades } from '../../core/access.ts';
 import { auditarReq } from '../../core/audit.ts';
@@ -7,6 +8,8 @@ import { diaEmBrasilia, partesEmBrasilia } from '../../lib/datas.ts';
 import { badRequest, forbidden, h, ipDe, notFound, parse } from '../../lib/http.ts';
 import { exigirLogin, exigirPermissao } from '../../middleware/auth.ts';
 import { candidatoVisivel } from '../central/service.ts';
+import { enfileirar } from '../whatsapp/envio.ts';
+import { dataPorExtenso } from '../../lib/datas.ts';
 import { agendar, ABERTAS, horariosDaUnidade, mudarSituacao, remarcar, type Origem } from './servico.ts';
 
 /** Entrevistas: disponibilidade das unidades, horários livres, agenda e ações sobre cada entrevista. */
@@ -198,9 +201,13 @@ entrevistasRouter.get('/candidato/:id', h(async (req, res) => {
 
 entrevistasRouter.post('/candidato/:id', exigirPermissao('entrevistas.agendar'), h(async (req, res) => {
   const id = parse(uuid, req.params.id);
-  const b = parse(z.object({ inicioEm: z.string().datetime({ offset: true }), responsavelId: uuid.nullable().optional() }), req.body);
+  const b = parse(z.object({ inicioEm: z.string().datetime({ offset: true }), responsavelId: uuid.nullable().optional(), enviarWhatsapp: z.boolean().default(false) }), req.body);
   await candidatoVisivel(req.usuario!, id);
-  const entrevistaId = await transaction((db) => agendar(db, id, new Date(b.inicioEm), origemDe(req), b.responsavelId));
+  const entrevistaId = await transaction(async (db) => {
+    const eid = await agendar(db, id, new Date(b.inicioEm), origemDe(req), b.responsavelId);
+    if (b.enviarWhatsapp) await enviarConfirmacao(db, id, eid, new Date(b.inicioEm));
+    return eid;
+  });
   res.status(201).json({ id: entrevistaId });
 }));
 
@@ -223,8 +230,24 @@ for (const [rota, acao] of Object.entries(ACOES)) {
 
 entrevistasRouter.post('/:id/remarcar', exigirPermissao('entrevistas.agendar'), h(async (req, res) => {
   const id = parse(uuid, req.params.id);
-  const b = parse(z.object({ inicioEm: z.string().datetime({ offset: true }), motivo: z.string().trim().max(255).optional() }), req.body);
+  const b = parse(z.object({ inicioEm: z.string().datetime({ offset: true }), motivo: z.string().trim().max(255).optional(), enviarWhatsapp: z.boolean().default(false) }), req.body);
   await conferirEntrevista(req, id);
-  const nova = await transaction((db) => remarcar(db, id, new Date(b.inicioEm), origemDe(req), b.motivo));
+  const nova = await transaction(async (db) => {
+    const r = await pool.query<{ candidato_id: string }>('SELECT candidato_id FROM entrevistas WHERE id = $1', [id]);
+    const nid = await remarcar(db, id, new Date(b.inicioEm), origemDe(req), b.motivo);
+    if (b.enviarWhatsapp) await enviarConfirmacao(db, r.rows[0].candidato_id, nid, new Date(b.inicioEm));
+    return nid;
+  });
   res.json({ id: nova });
 }));
+
+/** "Olá! Sua entrevista foi agendada para o dia [DATA], às [HORÁRIO]. Você estaria disponível? Responda SIM ou NÃO." */
+async function enviarConfirmacao(db: PoolClient, candidatoId: string, entrevistaId: string, inicio: Date) {
+  const p = partesEmBrasilia(inicio);
+  await enfileirar(db, {
+    candidatoId,
+    conteudo: { tipo: 'aviso', finalidade: 'entrevista', variaveis: { data: dataPorExtenso(inicio), horario: p.hora } },
+    autor: { tipo: 'chatbot', nome: 'Assistente virtual' },
+    chaveIdempotencia: `entrevista:${entrevistaId}:confirmacao`,
+  });
+}

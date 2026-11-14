@@ -9,7 +9,7 @@ import { decrypt, encrypt } from '../lib/crypto.ts';
 type Tipo = 'texto' | 'textoLongo' | 'numero' | 'booleano' | 'segredo' | 'email';
 
 interface Definicao {
-  grupo: 'smtp' | 'seguranca' | 'arquivos' | 'privacidade';
+  grupo: 'smtp' | 'seguranca' | 'arquivos' | 'privacidade' | 'whatsapp';
   rotulo: string;
   tipo: Tipo;
   env?: string;
@@ -36,6 +36,30 @@ export const DEFINICOES = {
 
   // Aviso de privacidade (LGPD) mostrado no formulário. Sem ele, o cadastro público fica fechado.
   'privacidade.aviso': { grupo: 'privacidade', rotulo: 'Texto do aviso de privacidade', tipo: 'textoLongo' },
+  // WhatsApp: provedor "meta" (Cloud API oficial) ou "evolution" (Evolution API, instância do WhatsApp Web). Número: A definir.
+  'whatsapp.provedor': { grupo: 'whatsapp', rotulo: 'Provedor (meta ou evolution)', tipo: 'texto', env: 'WHATSAPP_PROVIDER', padrao: 'meta' },
+  'whatsapp.evolution_url': { grupo: 'whatsapp', rotulo: 'Evolution: endereço do servidor (https://...)', tipo: 'texto', env: 'EVOLUTION_URL' },
+  'whatsapp.evolution_instancia': { grupo: 'whatsapp', rotulo: 'Evolution: nome da instância', tipo: 'texto', env: 'EVOLUTION_INSTANCE' },
+  'whatsapp.evolution_apikey': { grupo: 'whatsapp', rotulo: 'Evolution: chave da API (apikey)', tipo: 'segredo', env: 'EVOLUTION_APIKEY' },
+  'whatsapp.evolution_webhook_token': { grupo: 'whatsapp', rotulo: 'Evolution: token do webhook (cabeçalho x-aprovarh-token)', tipo: 'segredo', env: 'EVOLUTION_WEBHOOK_TOKEN' },
+  'whatsapp.texto_codigo': { grupo: 'whatsapp', rotulo: 'Evolution: texto do código de acesso ({nome}, {codigo}, {link})', tipo: 'textoLongo',
+    padrao: 'Olá, {nome}! Para acompanhar sua candidatura na Hummm! Pizzas, acesse {link} e use o código {codigo}. Ele vale até as 23h59 de hoje.' },
+  'whatsapp.texto_entrevista': { grupo: 'whatsapp', rotulo: 'Evolution: texto de confirmação de entrevista ({data}, {horario})', tipo: 'textoLongo',
+    padrao: 'Olá! Sua entrevista foi agendada para o dia {data}, às {horario}.\n\nVocê estaria disponível nessa data?\n\nResponda SIM ou NÃO.' },
+  'whatsapp.phone_number_id': { grupo: 'whatsapp', rotulo: 'Meta: ID do número (Phone Number ID)', tipo: 'texto', env: 'WHATSAPP_PHONE_NUMBER_ID' },
+  'whatsapp.waba_id': { grupo: 'whatsapp', rotulo: 'Meta: ID da conta WhatsApp Business (WABA ID)', tipo: 'texto', env: 'WHATSAPP_WABA_ID' },
+  'whatsapp.token': { grupo: 'whatsapp', rotulo: 'Meta: Token de acesso permanente (usuário do sistema)', tipo: 'segredo', env: 'WHATSAPP_TOKEN' },
+  'whatsapp.app_secret': { grupo: 'whatsapp', rotulo: 'Meta: Chave secreta do app (App Secret, confere a assinatura do webhook)', tipo: 'segredo', env: 'WHATSAPP_APP_SECRET' },
+  'whatsapp.verify_token': { grupo: 'whatsapp', rotulo: 'Meta: Token de verificação do webhook (você escolhe e cola também na Meta)', tipo: 'segredo', env: 'WHATSAPP_VERIFY_TOKEN' },
+  'whatsapp.versao_api': { grupo: 'whatsapp', rotulo: 'Meta: Versão da Graph API', tipo: 'texto', env: 'WHATSAPP_API_VERSION', padrao: 'v26.0' },
+  'whatsapp.modelo_codigo': { grupo: 'whatsapp', rotulo: 'Meta: modelo do código de acesso, no formato nome|idioma (variáveis: {{1}} nome, {{2}} código, {{3}} link)', tipo: 'texto' },
+  'whatsapp.modelo_entrevista': { grupo: 'whatsapp', rotulo: 'Meta: modelo de confirmação de entrevista, no formato nome|idioma (variáveis: {{1}} data, {{2}} horário; botões SIM e NÃO)', tipo: 'texto' },
+  'whatsapp.respostas_automaticas': { grupo: 'whatsapp', rotulo: 'Responder SIM/NÃO e datas automaticamente', tipo: 'booleano', padrao: 'true' },
+  'whatsapp.palavras_sim': { grupo: 'whatsapp', rotulo: 'Respostas aceitas como SIM (separadas por vírgula; vazio = padrão)', tipo: 'texto' },
+  'whatsapp.palavras_nao': { grupo: 'whatsapp', rotulo: 'Respostas aceitas como NÃO (separadas por vírgula; vazio = padrão)', tipo: 'texto' },
+  'whatsapp.dias_remarcacao': { grupo: 'whatsapp', rotulo: 'Dias à frente oferecidos para remarcar', tipo: 'numero', padrao: '30', min: 3, max: 120 },
+  'whatsapp.max_tentativas': { grupo: 'whatsapp', rotulo: 'Tentativas de envio antes de marcar como falha', tipo: 'numero', padrao: '5', min: 1, max: 10 },
+
   'privacidade.controlador': { grupo: 'privacidade', rotulo: 'Contato para dúvidas sobre dados (e-mail do encarregado/RH)', tipo: 'texto' },
 } as const satisfies Record<string, Definicao>;
 
