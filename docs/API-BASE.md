@@ -85,3 +85,18 @@ Todas exigem `candidatos.ver` e respeitam as unidades da pessoa: candidato de ou
 | GET | `/api/eventos` | Tempo real (Server-Sent Events): `mensagem.nova`, `candidato.atualizado`, `candidatura.nova`, `conversa.lida`. Só ids; os dados vêm das rotas acima | |
 
 > **Nginx:** para o tempo real, a rota `/api/eventos` não pode ficar presa no buffer. O servidor já envia `X-Accel-Buffering: no`; se o Nginx tiver `proxy_read_timeout` baixo, use pelo menos `75s`.
+
+## Portal do candidato (etapa 5)
+
+Sessão própria (cookie `arh_portal`), separada da área interna. Toda rota usa o candidato da sessão; nenhuma aceita id de candidato vindo do navegador.
+
+| Método | Rota | O que faz |
+|---|---|---|
+| POST | `/api/portal/entrar` | `{codigo}` (ex.: `ABCD-EF23`). Resposta de erro sempre "Código inválido ou expirado." Limite de 10 tentativas por IP a cada 15 min e trava geral se houver mais de 300 falhas em 10 min |
+| GET | `/api/portal/sessao` | Primeiro nome, validade (23:59:59 de Brasília), se pode enviar arquivo e as 4 etapas |
+| GET | `/api/portal/mensagens` | Só as mensagens visíveis ao candidato; marca as da equipe como lidas |
+| POST | `/api/portal/mensagens` · `/mensagens/arquivo` | Mensagem do candidato (arquivo só se a liberação permitir) |
+| GET | `/api/portal/arquivos/:id` | Arquivo da própria conversa |
+| POST | `/api/portal/sair` | Encerra a sessão |
+
+**Central:** `POST /api/central/candidatos/:id/acesso` `{permiteArquivo}` gera o código do dia (mostrado uma única vez) · `POST /api/central/candidatos/:id/acesso/revogar` (permissão `portal.liberar`). O perfil traz `portal.ativo`, `portal.liberacoes` e `portal.acessos`.

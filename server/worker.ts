@@ -1,5 +1,6 @@
 import { migrate } from './db/migrate.ts';
-import { pool } from './db/pool.ts';
+import { pool, transaction } from './db/pool.ts';
+import { expirarLiberacoes } from './modules/portal/servico.ts';
 
 /**
  * Worker: rotinas em segundo plano, em processo separado da API.
@@ -15,6 +16,17 @@ interface Rotina {
 }
 
 const rotinas: Rotina[] = [
+  {
+    // O acesso já é barrado em toda requisição às 23:59:59; aqui as liberações viram "expirada",
+    // as sessões são encerradas e o evento "Acesso expirado" é gerado para as automações.
+    nome: 'expiracao-do-portal',
+    intervaloMs: 60_000,
+    trava: 7240102,
+    executar: async () => {
+      const n = await transaction((db) => expirarLiberacoes(db));
+      if (n) return `${n} acesso(s) ao portal expirado(s)`;
+    },
+  },
   {
     nome: 'limpeza-de-acesso',
     intervaloMs: 15 * 60_000,

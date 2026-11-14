@@ -1,7 +1,7 @@
-import { ChevronDown, Download, Eye, FileText, Pencil, Plus, Trash2, X } from 'lucide-react';
+import { ChevronDown, Copy, Download, Eye, FileText, KeyRound, Pencil, Plus, Trash2, X } from 'lucide-react';
 import { useEffect, useState, type ReactNode } from 'react';
 import { useSessao } from '../../app/sessao';
-import { Aviso, Botao, Campo, Carregando, ErroCarregar, Modal, Selecao, Selo, useAviso } from '../../components/ui';
+import { Aviso, Botao, Campo, Carregando, Confirmar, ErroCarregar, Interruptor, Modal, Selecao, Selo, useAviso } from '../../components/ui';
 import { api, ApiError } from '../../lib/api';
 import { bytes, data, dataHora } from '../../lib/formato';
 import { useDados } from '../../lib/useDados';
@@ -131,6 +131,8 @@ export function PerfilCandidato({ candidatoId, versao, onFechar, onMudou }: { ca
         </ol>
         <p className="mt-2 text-xs text-suave">As etapas acompanham o status. Um ajuste manual vale até a próxima mudança de status.</p>
       </Secao>
+
+      <AcessoPortal p={p} pode={pode('portal.liberar')} onMudou={() => { void recarregar(); onMudou(); }} />
 
       <Secao titulo="Currículo e arquivos">
         {curriculo && pode('candidatos.curriculo.baixar') && (
@@ -281,5 +283,102 @@ function EditarDados({ p, onFechar, onSalvo }: { p: Perfil; onFechar: () => void
         </Selecao>
       </div>
     </Modal>
+  );
+}
+
+const RESULTADO_ACESSO = { sucesso: 'Entrou', codigo_invalido: 'Código inválido', expirado: 'Tentou com código vencido', revogado: 'Tentou com código revogado' } as const;
+
+/** Acesso ao portal: liberar o código do dia, revogar e ver o histórico de acessos. */
+function AcessoPortal({ p, pode, onMudou }: { p: Perfil; pode: boolean; onMudou: () => void }) {
+  const [liberar, setLiberar] = useState(false);
+  const [revogar, setRevogar] = useState(false);
+  const [permiteArquivo, setPermiteArquivo] = useState(false);
+  const [ocupado, setOcupado] = useState(false);
+  const [gerado, setGerado] = useState<{ codigo: string; expiraEm: string; mensagemSugerida: string; aviso: string } | null>(null);
+  const avisar = useAviso();
+  const ativo = p.portal.ativo;
+  const hora = (v: string) => new Date(v).toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit' });
+
+  const gerar = async () => {
+    setOcupado(true);
+    try {
+      setGerado(await api.post(`/api/central/candidatos/${p.id}/acesso`, { permiteArquivo }));
+      setLiberar(false);
+      onMudou();
+    } catch (e) {
+      avisar(e instanceof ApiError ? e.message : 'Não foi possível liberar.', 'erro');
+    } finally {
+      setOcupado(false);
+    }
+  };
+  const copiar = (t: string) => navigator.clipboard.writeText(t).then(() => avisar('Copiado.'), () => avisar('Não foi possível copiar.', 'erro'));
+
+  return (
+    <Secao titulo="Acesso ao portal">
+      {ativo ? (
+        <div className="space-y-1 text-sm">
+          <p><Selo tom="verde">Liberado</Selo> <span className="ml-1">até {hora(ativo.expiraEm)} de hoje</span></p>
+          <p className="text-suave">Liberado às {hora(ativo.liberadoEm)}{ativo.liberadaPor ? ` por ${ativo.liberadaPor}` : ativo.origem === 'automacao' ? ' pela automação' : ''}{ativo.permiteArquivo ? ' · pode enviar arquivos' : ''}</p>
+          <p className="text-suave">{ativo.primeiroUsoEm ? `Entrou pela primeira vez às ${hora(ativo.primeiroUsoEm)}` : 'Ainda não entrou'}</p>
+        </div>
+      ) : <p className="text-sm text-suave">Sem acesso liberado hoje. O candidato não consegue entrar no portal.</p>}
+      {pode && (
+        <div className="mt-3 flex gap-2">
+          <Botao variante="secundario" className="flex-1" icone={<KeyRound className="size-4" />} onClick={() => setLiberar(true)}>{ativo ? 'Gerar código novo' : 'Liberar acesso'}</Botao>
+          {ativo && <Botao variante="fantasma" onClick={() => setRevogar(true)}>Revogar</Botao>}
+        </div>
+      )}
+      {(p.portal.acessos.length > 0 || p.portal.liberacoes.length > 0) && (
+        <details className="mt-3 text-sm">
+          <summary className="cursor-pointer font-semibold">Histórico de acesso</summary>
+          <ul className="mt-2 space-y-2">
+            {[
+              ...p.portal.liberacoes.map((l) => ({ em: l.liberadoEm, texto: `Código liberado${l.liberadaPor ? ` por ${l.liberadaPor}` : l.origem === 'automacao' ? ' pela automação' : ''} · ${{ ativa: 'ativo', expirada: 'expirou', revogada: 'revogado' }[l.situacao]}` })),
+              ...p.portal.acessos.map((a) => ({ em: a.em, texto: `${RESULTADO_ACESSO[a.resultado]}${a.dispositivo ? ` · ${a.dispositivo}` : ''}${a.ip ? ` · IP ${a.ip}` : ''}` })),
+            ].sort((a, b) => b.em.localeCompare(a.em)).slice(0, 30).map((h, i) => (
+              <li key={i} className="border-l-2 border-borda pl-3"><p>{h.texto}</p><p className="text-xs text-suave">{dataHora(h.em)}</p></li>
+            ))}
+          </ul>
+        </details>
+      )}
+
+      <Modal aberto={liberar} onFechar={() => setLiberar(false)} titulo={ativo ? 'Gerar código novo?' : 'Liberar acesso ao portal?'} largura="max-w-md"
+        rodape={<><Botao variante="secundario" onClick={() => setLiberar(false)}>Cancelar</Botao><Botao carregando={ocupado} onClick={() => void gerar()}>Gerar código</Botao></>}>
+        <div className="space-y-4 text-sm">
+          <p>O código vale até <strong>23h59 de hoje</strong> (horário de Brasília).{ativo && ' O código atual deixa de valer e quem estiver no portal sai.'}</p>
+          <Interruptor ligado={permiteArquivo} onChange={setPermiteArquivo} rotulo="Permitir envio de arquivos" descricao="O candidato poderá mandar documentos pelo chat do portal." />
+          <Aviso>Até a integração com o WhatsApp (etapa 7), envie o código ao candidato você mesma. Depois, o envio será automático.</Aviso>
+        </div>
+      </Modal>
+
+      <Modal aberto={Boolean(gerado)} onFechar={() => setGerado(null)} titulo="Código gerado" largura="max-w-md" rodape={<Botao onClick={() => setGerado(null)}>Já enviei</Botao>}>
+        {gerado && (
+          <div className="space-y-4">
+            <Aviso tipo="atencao">{gerado.aviso}</Aviso>
+            <p className="rounded-2xl bg-grafite py-4 text-center font-mono text-3xl font-bold tracking-[0.25em] text-amarelo">{gerado.codigo}</p>
+            <p className="text-sm text-suave">Válido até {hora(gerado.expiraEm)} de hoje.</p>
+            <div className="rounded-2xl border border-borda p-3 text-sm">{gerado.mensagemSugerida}</div>
+            <Botao variante="secundario" className="w-full" icone={<Copy className="size-4" />} onClick={() => void copiar(gerado.mensagemSugerida)}>Copiar mensagem</Botao>
+          </div>
+        )}
+      </Modal>
+
+      <Confirmar aberto={revogar} titulo="Revogar acesso?" perigo rotulo="Revogar" carregando={ocupado}
+        texto="O código deixa de valer na hora e o candidato sai do portal. As mensagens continuam guardadas."
+        onCancelar={() => setRevogar(false)}
+        onConfirmar={async () => {
+          setOcupado(true);
+          try {
+            await api.post(`/api/central/candidatos/${p.id}/acesso/revogar`);
+            avisar('Acesso revogado.');
+            setRevogar(false);
+            onMudou();
+          } catch (e) {
+            avisar(e instanceof ApiError ? e.message : 'Não foi possível revogar.', 'erro');
+          } finally {
+            setOcupado(false);
+          }
+        }} />
+    </Secao>
   );
 }

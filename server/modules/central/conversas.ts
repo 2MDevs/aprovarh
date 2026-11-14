@@ -58,8 +58,8 @@ conversasRouter.get('/:id/mensagens', h(async (req, res) => {
 async function gravarMensagem(db: PoolClient, req: Express.Request, candidatoId: string, unidadeId: string, texto: string | null, arquivoId: string | null) {
   const conversaId = await conversaDo(db, candidatoId);
   const r = await db.query<{ id: string; criado_em: Date }>(
-    `INSERT INTO mensagens (conversa_id, sentido, canal, autor_tipo, autor_usuario_id, autor_nome, texto, arquivo_id, visivel_ao_candidato)
-     VALUES ($1, 'saida', 'portal', 'gestora', $2, $3, $4, $5, true) RETURNING id, criado_em`,
+    `INSERT INTO mensagens (conversa_id, sentido, canal, autor_tipo, autor_usuario_id, autor_nome, texto, arquivo_id, visivel_ao_candidato, situacao_entrega)
+     VALUES ($1, 'saida', 'portal', 'gestora', $2, $3, $4, $5, true, 'enviada') RETURNING id, criado_em`,
     [conversaId, req.usuario!.id, req.usuario!.nome, texto ? encrypt(texto) : null, arquivoId],
   );
   await db.query('UPDATE conversas SET ultima_mensagem_id = $2, ultima_mensagem_em = $3 WHERE id = $1', [conversaId, r.rows[0].id, r.rows[0].criado_em]);

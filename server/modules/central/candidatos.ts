@@ -6,8 +6,10 @@ import { pool, transaction } from '../../db/pool.ts';
 import { lerArquivo } from '../../lib/arquivos.ts';
 import { encrypt, hmac } from '../../lib/crypto.ts';
 import { capitalizarNome, nomeValido, normalizarTelefone, soDigitos } from '../../lib/documentos.ts';
-import { badRequest, forbidden, h, notFound, parse } from '../../lib/http.ts';
+import { badRequest, forbidden, h, ipDe, notFound, parse } from '../../lib/http.ts';
 import { exigirLogin, exigirPermissao } from '../../middleware/auth.ts';
+import { env } from '../../config/env.ts';
+import { liberarAcesso, revogarAcesso } from '../portal/servico.ts';
 import {
   avisarMudanca, candidatoVisivel, decifrarSeguro, ETAPAS, formatarTelefone, mascararCpf, mascararTelefone,
   recalcularLinhaDoTempo, registrarEvento,
@@ -104,6 +106,14 @@ candidatosRouter.get('/:id', h(async (req, res) => {
   const u = req.usuario!;
   const c = await candidatoVisivel(u, id);
   const verObs = pode(u, 'observacoes.ver');
+  const [acessoAtivo, liberacoes, acessos] = await Promise.all([
+    pool.query(`SELECT l.liberado_em, l.expira_em, l.permite_arquivo, l.primeiro_uso_em, l.origem, us.nome AS liberada_por
+                  FROM liberacoes_acesso l LEFT JOIN usuarios us ON us.id = l.liberada_por
+                 WHERE l.candidato_id = $1 AND l.situacao = 'ativa' AND l.expira_em > now()`, [id]),
+    pool.query(`SELECT l.liberado_em, l.expira_em, l.situacao, l.origem, l.motivo, l.primeiro_uso_em, us.nome AS liberada_por
+                  FROM liberacoes_acesso l LEFT JOIN usuarios us ON us.id = l.liberada_por WHERE l.candidato_id = $1 ORDER BY l.liberado_em DESC LIMIT 20`, [id]),
+    pool.query(`SELECT em, resultado, ip, dispositivo FROM acessos_portal WHERE candidato_id = $1 ORDER BY em DESC LIMIT 30`, [id]),
+  ]);
   const [tags, etapas, statusHist, tagsHist, candidaturas, arquivos, observacoes] = await Promise.all([
     pool.query(`SELECT t.id, t.nome, t.cor FROM candidato_tags ct JOIN tags t ON t.id = ct.tag_id WHERE ct.candidato_id = $1 AND t.ativa ORDER BY t.nome`, [id]),
     pool.query(`SELECT etapa, situacao, origem, atualizado_em FROM etapas_candidato WHERE candidato_id = $1`, [id]),
@@ -139,7 +149,15 @@ candidatosRouter.get('/:id', h(async (req, res) => {
         return { em: r.recebida_em, tipo: r.tipo, nomeInformado: r.nome_informado, telefoneInformado: tel ? formatarTelefone(tel) : null,
           telefoneDiferente: r.telefone_diferente, unidadeDiferente: r.unidade_diferente, unidade: r.unidade };
       }),
-      // Entrevistas (etapa 6) e acessos ao portal (etapa 5) entram aqui quando existirem.
+      // Entrevistas entram aqui na etapa 6.
+    },
+    portal: {
+      ativo: acessoAtivo.rows[0] ? {
+        liberadoEm: acessoAtivo.rows[0].liberado_em, expiraEm: acessoAtivo.rows[0].expira_em, permiteArquivo: acessoAtivo.rows[0].permite_arquivo,
+        primeiroUsoEm: acessoAtivo.rows[0].primeiro_uso_em, origem: acessoAtivo.rows[0].origem, liberadaPor: acessoAtivo.rows[0].liberada_por,
+      } : null,
+      liberacoes: liberacoes.rows.map((l) => ({ liberadoEm: l.liberado_em, expiraEm: l.expira_em, situacao: l.situacao, origem: l.origem, motivo: l.motivo, primeiroUsoEm: l.primeiro_uso_em, liberadaPor: l.liberada_por })),
+      acessos: acessos.rows.map((a) => ({ em: a.em, resultado: a.resultado, ip: a.ip, dispositivo: a.dispositivo })),
     },
     arquivos: arquivos.rows.map((a) => ({ id: a.id, nome: a.nome_original, tipoMime: a.tipo_mime, tamanho: Number(a.tamanho), tipo: a.tipo, enviadoPor: a.enviado_por, em: a.criado_em })),
     observacoes: verObs ? observacoes.rows.map((o) => ({ id: o.id, texto: decifrarSeguro(o.texto), em: o.criada_em, autor: o.autor, minha: o.autor_id === u.id })) : null,
@@ -306,5 +324,41 @@ candidatosRouter.delete('/:id/observacoes/:obsId', exigirPermissao('observacoes.
   const r = await pool.query('UPDATE observacoes SET excluida_em = now() WHERE id = $1 AND candidato_id = $2 AND autor_id = $3 AND excluida_em IS NULL', [obsId, id, req.usuario!.id]);
   if (!r.rowCount) throw notFound('Observação não encontrada (ou não é sua).');
   await auditarReq(req, { acao: 'candidato.observacao_excluida', resultado: 'sucesso', item: { tipo: 'candidato', id, nome: c.codigo } });
+  res.json({ ok: true });
+}));
+
+// ── Portal: liberar e revogar o acesso do dia ──────────────────────────────
+/**
+ * Liberação manual pela gestora. Gera o código do dia (vale até 23:59:59 em Brasília) e devolve o código
+ * UMA ÚNICA VEZ, para ser enviado ao candidato. A partir da etapa 7 o envio é feito pelo WhatsApp
+ * (e na etapa 8, pelas automações), usando esta mesma função de liberação.
+ */
+candidatosRouter.post('/:id/acesso', exigirPermissao('portal.liberar'), h(async (req, res) => {
+  const id = parse(uuid, req.params.id);
+  const { permiteArquivo } = parse(z.object({ permiteArquivo: z.boolean().default(false) }), req.body);
+  const r = await transaction(async (db) => {
+    const c = await candidatoVisivel(req.usuario!, id, db, true);
+    const ator = { usuarioId: req.usuario!.id, usuarioNome: req.usuario!.nome, perfil: req.usuario!.perfilNome, setor: req.usuario!.setor };
+    const lib = await liberarAcesso(db, id, c.unidade_id, { tipo: 'usuario', usuarioId: req.usuario!.id, ator }, { permiteArquivo }, ipDe(req));
+    return { ...lib, nome: c.nome };
+  });
+  const link = `${env.APP_URL.replace(/\/$/, '')}/acesso`;
+  res.status(201).json({
+    codigo: r.codigo,
+    expiraEm: r.expiraEm,
+    link,
+    mensagemSugerida: `Olá, ${r.nome}! Para acompanhar sua candidatura na Hummm! Pizzas, acesse ${link} e use o código ${r.codigo}. Ele vale até as 23h59 de hoje.`,
+    aviso: 'O código aparece só agora. Ele não fica guardado no sistema.',
+  });
+}));
+
+candidatosRouter.post('/:id/acesso/revogar', exigirPermissao('portal.liberar'), h(async (req, res) => {
+  const id = parse(uuid, req.params.id);
+  const revogou = await transaction(async (db) => {
+    const c = await candidatoVisivel(req.usuario!, id, db, true);
+    const ator = { usuarioId: req.usuario!.id, usuarioNome: req.usuario!.nome, perfil: req.usuario!.perfilNome, setor: req.usuario!.setor };
+    return revogarAcesso(db, id, c.unidade_id, { tipo: 'usuario', usuarioId: req.usuario!.id, ator }, 'Revogada pela equipe de RH', ipDe(req));
+  });
+  if (!revogou) throw notFound('Não há acesso ativo para revogar.');
   res.json({ ok: true });
 }));

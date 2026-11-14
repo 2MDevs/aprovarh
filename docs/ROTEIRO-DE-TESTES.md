@@ -102,3 +102,34 @@ Marque cada item ao testar. Se algo não sair como esperado, registre: **o que v
 ### Permissões e unidades
 - [ ] Gestora com acesso só à unidade A não vê candidatos da unidade B nem pelo endereço direto (/conversas?c=...).
 - [ ] Perfil sem "Ver e baixar currículo" não consegue abrir o currículo (nem pelo endereço).
+
+## Etapa 5: portal temporário do candidato
+
+### Liberação
+- [ ] Perfil do candidato › Acesso ao portal mostra "Sem acesso liberado hoje".
+- [ ] "Liberar acesso" gera um código no formato XXXX-XXXX, válido até 23h59 de hoje, com a mensagem pronta para copiar.
+- [ ] Fechar o aviso: o código não aparece de novo em lugar nenhum (nem no banco: só o hash).
+- [ ] "Gerar código novo": o código anterior para de funcionar e quem estava no portal sai.
+- [ ] "Revogar": o candidato sai na hora; o código não volta a valer.
+
+### Entrada
+- [ ] `/acesso` mostra só "Acesse sua candidatura", o campo do código e "Entrar". Não há cadastro, senha ou "esqueci".
+- [ ] Código errado, vencido ou revogado: sempre "Código inválido ou expirado."
+- [ ] Digitar em minúsculas ou sem o traço também funciona.
+- [ ] Mais de 10 tentativas em 15 minutos no mesmo aparelho são bloqueadas.
+- [ ] `/portal` sem ter entrado mostra "Seu acesso terminou".
+
+### Portal
+- [ ] Não há lista de contatos: à esquerda (ou no topo, no celular) fica a linha do tempo com as 4 etapas.
+- [ ] Mudar o status na Central atualiza as etapas no portal em até 10 segundos.
+- [ ] O portal **não mostra** status interno, tags, observações, telefone completo, CPF nem nomes da equipe.
+- [ ] Mensagem da gestora aparece no portal; a resposta do candidato aparece na Central na hora, como não lida.
+- [ ] Na Central, a mensagem da gestora fica com o sinal de "lida" quando o candidato abre o portal.
+- [ ] O aviso "Candidatura recebida" (do sistema) não aparece no portal.
+- [ ] Clipe de anexo só aparece quando a liberação permitiu arquivos.
+
+### Expiração
+- [ ] Com o portal aberto, às 23h59min59s a tela muda para "Seu acesso terminou" (mesmo sem tocar em nada).
+- [ ] Depois da meia-noite, o mesmo código é recusado e o perfil mostra o acesso como "expirou".
+- [ ] As mensagens continuam guardadas e aparecem de novo com um código novo.
+- [ ] Histórico de acesso no perfil mostra entradas, tentativas recusadas, dispositivo e IP.
