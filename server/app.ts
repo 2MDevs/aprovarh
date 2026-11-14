@@ -18,6 +18,7 @@ import { notificacoesRouter } from './modules/notificacoes/routes.ts';
 import { sistemaRouter } from './modules/sistema/routes.ts';
 import { publicoRouter } from './modules/publico/routes.ts';
 import { portalRouter } from './modules/portal/routes.ts';
+import { entrevistasRouter } from './modules/entrevistas/routes.ts';
 import { candidatosRouter } from './modules/central/candidatos.ts';
 import { configCentralRouter } from './modules/central/configuracao.ts';
 import { conversasRouter } from './modules/central/conversas.ts';
@@ -72,6 +73,7 @@ export function criarApp() {
   app.use('/api/atualizacao', atualizacaoRouter);
   app.use('/api/notificacoes', notificacoesRouter);
   app.use('/api/central/config', configCentralRouter);
+  app.use('/api/entrevistas', entrevistasRouter);
   app.use('/api/central/candidatos', conversasRouter);
   app.use('/api/central/candidatos', candidatosRouter);
   app.get('/api/eventos', exigirLogin(), rotaEventos);

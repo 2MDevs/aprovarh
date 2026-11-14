@@ -7,6 +7,7 @@ import { bytes, data, dataHora } from '../../lib/formato';
 import { useDados } from '../../lib/useDados';
 import { Foto, Pilula } from './comum';
 import { useOpcoesFiltro } from './Filtros';
+import { SecaoEntrevista } from '../entrevistas/SecaoEntrevista';
 import { ROTULO_ETAPA, ROTULO_SITUACAO, urlArquivo, type Perfil, type SituacaoEtapa } from './tipos';
 
 const TOM_ETAPA: Record<SituacaoEtapa, 'verde' | 'amarelo' | 'cinza'> = { concluida: 'verde', em_andamento: 'amarelo', aguardando: 'amarelo', nao_iniciada: 'cinza' };
@@ -132,6 +133,8 @@ export function PerfilCandidato({ candidatoId, versao, onFechar, onMudou }: { ca
         <p className="mt-2 text-xs text-suave">As etapas acompanham o status. Um ajuste manual vale até a próxima mudança de status.</p>
       </Secao>
 
+      <SecaoEntrevista candidatoId={p.id} unidadeId={p.unidade.id} versao={versao} onMudou={() => { void recarregar(); onMudou(); }} Secao={Secao} />
+
       <AcessoPortal p={p} pode={pode('portal.liberar')} onMudou={() => { void recarregar(); onMudou(); }} />
 
       <Secao titulo="Currículo e arquivos">
@@ -183,7 +186,7 @@ export function PerfilCandidato({ candidatoId, versao, onFechar, onMudou }: { ca
   );
 }
 
-function Secao({ titulo, children, recolhida }: { titulo: string; children: ReactNode; recolhida?: boolean }) {
+export function Secao({ titulo, children, recolhida }: { titulo: string; children: ReactNode; recolhida?: boolean }) {
   const [aberta, setAberta] = useState(!recolhida);
   return (
     <section className="mx-4 mt-4 rounded-2xl border border-borda p-4">
