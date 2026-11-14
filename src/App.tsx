@@ -4,6 +4,8 @@ import { SessaoProvider, useSessao } from './app/sessao';
 import { Carregando, ToastProvider } from './components/ui';
 import { Login } from './pages/acesso/Login';
 import { Candidatura } from './pages/publico/Candidatura';
+import { Acesso } from './pages/portal/Acesso';
+import { Portal } from './pages/portal/Portal';
 import { Candidatos } from './pages/central/Candidatos';
 import { Configuracoes } from './pages/central/Configuracoes';
 import { Conversas } from './pages/central/Conversas';
@@ -34,6 +36,9 @@ function Rotas() {
 
   // Página pública do candidato: abre igual para todos, logado ou não.
   if (local.pathname === '/candidatura') return <Candidatura />;
+  // Portal do candidato: área separada, com sessão própria (código do dia).
+  if (local.pathname === '/acesso') return <Acesso />;
+  if (local.pathname === '/portal') return <Portal />;
 
   if (!sessao) return <Carregando texto="Abrindo o aprovaRH..." />;
 

@@ -17,6 +17,7 @@ import { integracaoRouter } from './modules/integracao/routes.ts';
 import { notificacoesRouter } from './modules/notificacoes/routes.ts';
 import { sistemaRouter } from './modules/sistema/routes.ts';
 import { publicoRouter } from './modules/publico/routes.ts';
+import { portalRouter } from './modules/portal/routes.ts';
 import { candidatosRouter } from './modules/central/candidatos.ts';
 import { configCentralRouter } from './modules/central/configuracao.ts';
 import { conversasRouter } from './modules/central/conversas.ts';
@@ -57,6 +58,7 @@ export function criarApp() {
 
   app.use('/api', limiteGeral, conferirOrigem, carregarSessao);
   app.use('/api/publico', publicoRouter);
+  app.use('/api/portal', portalRouter);
   app.use('/api/auth', authRouter);
   app.use('/api/conta', contaRouter);
   app.use('/api/usuarios', usuariosRouter);

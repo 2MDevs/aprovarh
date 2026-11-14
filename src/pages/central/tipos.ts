@@ -27,6 +27,11 @@ export interface Perfil {
   };
   arquivos: { id: string; nome: string; tipoMime: string; tamanho: number; tipo: 'curriculo' | 'foto' | 'anexo'; enviadoPor: string; em: string }[];
   observacoes: { id: string; texto: string | null; em: string; autor: string; minha: boolean }[] | null;
+  portal: {
+    ativo: { liberadoEm: string; expiraEm: string; permiteArquivo: boolean; primeiroUsoEm: string | null; origem: 'usuario' | 'automacao'; liberadaPor: string | null } | null;
+    liberacoes: { liberadoEm: string; expiraEm: string; situacao: 'ativa' | 'expirada' | 'revogada'; origem: string; motivo: string | null; primeiroUsoEm: string | null; liberadaPor: string | null }[];
+    acessos: { em: string; resultado: 'sucesso' | 'codigo_invalido' | 'expirado' | 'revogado'; ip: string | null; dispositivo: string | null }[];
+  };
 }
 
 export interface Mensagem {

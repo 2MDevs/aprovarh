@@ -13,7 +13,8 @@ Desenvolvido por **Marcos Monteiro (TI - Tecnologia da Informação da Hummm! Pi
 | 2B. Base padrão: telas | ✅ concluída |
 | 3. Cadastro público do candidato | ✅ concluída |
 | 4A. Central de RH: servidor | ✅ concluída |
-| **4B. Central de RH: telas** (Conversas estilo WhatsApp Web, Candidatos, Configurações de status e tags) | 🔄 este PR |
+| 4B. Central de RH: telas | ✅ concluída |
+| **5. Portal temporário do candidato** | 🔄 este PR |
 | 3 a 9 | veja o [plano](docs/PLANO.md) |
 
 Documentos: [Plano](docs/PLANO.md) · [Arquitetura](docs/ARQUITETURA.md) · [Modelo de dados](docs/MODELO-DE-DADOS.md) · [Telas](docs/TELAS.md) · [Decisões](docs/DECISOES.md) · [API da base](docs/API-BASE.md) · [Roteiro de testes](docs/ROTEIRO-DE-TESTES.md)
