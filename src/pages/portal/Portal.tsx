@@ -1,4 +1,4 @@
-import { Check, Circle, Clock, Download, FileText, Loader2, LogOut, Paperclip, Send, X } from 'lucide-react';
+import { CalendarCheck, Check, Circle, Clock, Download, FileText, Loader2, LogOut, Paperclip, Send, X } from 'lucide-react';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { LogoHummm } from '../../components/Marca';
@@ -6,7 +6,9 @@ import { Aviso } from '../../components/ui';
 import { bytes } from '../../lib/formato';
 
 type Situacao = 'concluida' | 'em_andamento' | 'aguardando' | 'nao_iniciada';
-interface SessaoPortal { nome: string; expiraEm: string; podeEnviarArquivo: boolean; etapas: { etapa: string; situacao: Situacao; atualizadoEm: string | null }[] }
+interface SessaoPortal {
+  nome: string; expiraEm: string; podeEnviarArquivo: boolean;
+  entrevista: { inicioEm: string; duracaoMinutos: number; confirmada: boolean; remarcando: boolean; unidade: string; local: string | null } | null; etapas: { etapa: string; situacao: Situacao; atualizadoEm: string | null }[] }
 interface MensagemPortal { id: string; deMim: boolean; autor: string; texto: string | null; em: string; arquivo: { id: string; nome: string; tamanho: number } | null }
 
 const ROTULO: Record<string, string> = { candidatura: 'Candidatura enviada', analise: 'Análise do currículo', entrevista: 'Entrevista', resultado: 'Resultado' };
@@ -102,6 +104,15 @@ export function Portal() {
                 </li>
               ))}
             </ol>
+            {sessao.entrevista && (
+              <div className="mt-6 rounded-2xl border border-amarelo bg-creme p-4 text-grafite dark:bg-amarelo/10 dark:text-creme">
+                <p className="flex items-center gap-2 text-sm font-bold"><CalendarCheck className="size-4" /> Sua entrevista</p>
+                <p className="mt-2 font-semibold capitalize">{new Date(sessao.entrevista.inicioEm).toLocaleDateString('pt-BR', { ...FUSO, weekday: 'long', day: '2-digit', month: 'long' })}</p>
+                <p className="text-2xl font-bold">{new Date(sessao.entrevista.inicioEm).toLocaleTimeString('pt-BR', { ...FUSO, hour: '2-digit', minute: '2-digit' })}</p>
+                <p className="mt-1 text-sm">Unidade {sessao.entrevista.unidade}{sessao.entrevista.local ? ` · ${sessao.entrevista.local}` : ''}</p>
+                <p className="mt-2 text-sm font-semibold">{sessao.entrevista.confirmada ? '✓ Confirmada' : sessao.entrevista.remarcando ? 'Você pediu outra data. A equipe vai propor um novo horário.' : 'Aguardando sua confirmação'}</p>
+              </div>
+            )}
           </div>
         </aside>
 

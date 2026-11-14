@@ -100,3 +100,22 @@ Sessão própria (cookie `arh_portal`), separada da área interna. Toda rota usa
 | POST | `/api/portal/sair` | Encerra a sessão |
 
 **Central:** `POST /api/central/candidatos/:id/acesso` `{permiteArquivo}` gera o código do dia (mostrado uma única vez) · `POST /api/central/candidatos/:id/acesso/revogar` (permissão `portal.liberar`). O perfil traz `portal.ativo`, `portal.liberacoes` e `portal.acessos`.
+
+## Entrevistas (etapa 6)
+
+Todas exigem `candidatos.ver` e respeitam as unidades da pessoa.
+
+| Método | Rota | O que faz | Permissão extra |
+|---|---|---|---|
+| GET | `/api/entrevistas/disponibilidades?unidadeId=` | Períodos (datas, dias da semana, horários, duração, vagas, responsável, local) | |
+| POST / PUT / DELETE | `/api/entrevistas/disponibilidades[/:id]` | Cadastrar, editar e excluir período (entrevistas já marcadas continuam valendo) | `disponibilidade.configurar` |
+| GET / POST / DELETE | `/api/entrevistas/bloqueios[/:id]` | Dias sem entrevista (feriado, folga) | `disponibilidade.configurar` |
+| GET | `/api/entrevistas/responsaveis` | Pessoas que podem ser responsáveis | |
+| GET | `/api/entrevistas/horarios?unidadeId=&de=&ate=` | Horários futuros com vagas livres (padrão: 60 dias; máximo 120) | |
+| GET | `/api/entrevistas?de=&ate=&unidadeId=&situacao=` | Agenda | |
+| GET | `/api/entrevistas/candidato/:id` | Entrevistas do candidato, com os eventos | |
+| POST | `/api/entrevistas/candidato/:id` | `{inicioEm}`: agenda (confere disponibilidade e vaga com trava por unidade) | `entrevistas.agendar` |
+| POST | `/api/entrevistas/:id/confirmar` · `/cancelar` · `/realizada` · `/nao-compareceu` | `{motivo?}` | `entrevistas.agendar` |
+| POST | `/api/entrevistas/:id/remarcar` | `{inicioEm, motivo?}` | `entrevistas.agendar` |
+
+O portal (`GET /api/portal/sessao`) passa a mandar `entrevista`: data, horário, duração, unidade, local e se está confirmada.

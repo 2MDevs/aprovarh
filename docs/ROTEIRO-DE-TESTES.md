@@ -133,3 +133,29 @@ Marque cada item ao testar. Se algo não sair como esperado, registre: **o que v
 - [ ] Depois da meia-noite, o mesmo código é recusado e o perfil mostra o acesso como "expirou".
 - [ ] As mensagens continuam guardadas e aparecem de novo com um código novo.
 - [ ] Histórico de acesso no perfil mostra entradas, tentativas recusadas, dispositivo e IP.
+
+## Etapa 6: agendamento de entrevistas
+
+### Disponibilidade
+- [ ] Entrevistas › Disponibilidade: escolher a unidade e criar um período (datas, dias da semana, horários, duração, vagas, responsável, local).
+- [ ] Recusa data final antes da inicial, nenhum dia da semana ou nenhum horário.
+- [ ] Bloquear um dia (ex.: feriado): ele some dos horários oferecidos.
+- [ ] Excluir o período: os horários somem, mas entrevistas já marcadas continuam.
+
+### Agendamento
+- [ ] Perfil do candidato › Entrevista › "Agendar entrevista" mostra só dias e horários da disponibilidade, futuros e com vaga.
+- [ ] Unidade sem período: aparece o aviso para cadastrar a disponibilidade.
+- [ ] Agendar: o status muda para "Aguardando entrevista", com registro no histórico; a conversa ganha o aviso com data e horário.
+- [ ] Com 1 vaga por horário, um segundo candidato não consegue o mesmo horário (aparece "lotado"; tentando ao mesmo tempo, um dos dois recebe "sem vaga").
+- [ ] Um candidato não pode ter duas entrevistas em aberto.
+- [ ] Remarcar: o horário antigo fica livre, o novo é conferido e o histórico mostra "Remarcada".
+- [ ] Confirmar, Realizada, Não veio e Cancelar ficam no histórico com quem e quando.
+
+### Agenda
+- [ ] Entrevistas › Agenda mostra a semana, por dia, com horário, candidato, unidade, responsável e situação; semana anterior/próxima e "Hoje".
+- [ ] Clicar abre a conversa do candidato.
+- [ ] Filtro por unidade; gestora de uma unidade não vê entrevistas de outra.
+
+### Portal
+- [ ] O candidato vê o cartão "Sua entrevista" com data, horário, unidade e local, e "Aguardando sua confirmação" ou "Confirmada".
+- [ ] Os avisos de agendamento, remarcação, confirmação e cancelamento aparecem no chat do portal.

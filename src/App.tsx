@@ -9,6 +9,7 @@ import { Portal } from './pages/portal/Portal';
 import { Candidatos } from './pages/central/Candidatos';
 import { Configuracoes } from './pages/central/Configuracoes';
 import { Conversas } from './pages/central/Conversas';
+import { Entrevistas } from './pages/entrevistas/Entrevistas';
 import { DefinirSenha, TelaBloqueada, TrocarSenhaObrigatoria } from './pages/acesso/Senhas';
 import { Administracao } from './pages/administracao/Administracao';
 import { Auditoria } from './pages/auditoria/Auditoria';
@@ -63,6 +64,7 @@ function Rotas() {
           <Route index element={<Navigate to={inicio} replace />} />
           <Route path="/conversas" element={<Conversas />} />
           <Route path="/candidatos" element={<Candidatos />} />
+          <Route path="/entrevistas" element={<Entrevistas />} />
           <Route path="/configuracoes" element={<Configuracoes />} />
           <Route path="/administracao" element={<Administracao />} />
           <Route path="/dispositivos" element={<Dispositivos />} />

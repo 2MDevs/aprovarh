@@ -108,11 +108,19 @@ portalRouter.use(exigirPortal);
 // ── O que o candidato vê ───────────────────────────────────────────────────
 portalRouter.get('/sessao', h(async (req, res) => {
   const p = req.portal!;
-  const etapas = await pool.query<{ etapa: string; situacao: string; atualizado_em: Date }>('SELECT etapa, situacao, atualizado_em FROM etapas_candidato WHERE candidato_id = $1', [p.candidatoId]);
+  const [etapas, entrevista] = await Promise.all([
+    pool.query<{ etapa: string; situacao: string; atualizado_em: Date }>('SELECT etapa, situacao, atualizado_em FROM etapas_candidato WHERE candidato_id = $1', [p.candidatoId]),
+    // Entrevista em aberto (data, horário, unidade e se está confirmada): nada interno além disso.
+    pool.query(`SELECT e.inicio_em, e.duracao_minutos, e.situacao, e.local_texto, u.nome AS unidade
+                  FROM entrevistas e JOIN unidades u ON u.id = e.unidade_id
+                 WHERE e.candidato_id = $1 AND e.situacao IN ('aguardando_confirmacao', 'confirmada', 'remarcacao_solicitada') LIMIT 1`, [p.candidatoId]),
+  ]);
+  const ent = entrevista.rows[0];
   res.json({
     nome: p.nome, // só o primeiro nome
     expiraEm: p.expiraEm,
     podeEnviarArquivo: p.permiteArquivo,
+    entrevista: ent ? { inicioEm: ent.inicio_em, duracaoMinutos: ent.duracao_minutos, confirmada: ent.situacao === 'confirmada', remarcando: ent.situacao === 'remarcacao_solicitada', unidade: ent.unidade, local: ent.local_texto } : null,
     etapas: ETAPAS.map((e) => {
       const r = etapas.rows.find((x) => x.etapa === e);
       return { etapa: e, situacao: r?.situacao ?? 'nao_iniciada', atualizadoEm: r?.atualizado_em ?? null };
