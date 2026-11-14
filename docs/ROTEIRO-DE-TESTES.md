@@ -68,3 +68,37 @@ Marque cada item ao testar. Se algo não sair como esperado, registre: **o que v
 - [ ] Mesmo CPF de novo, com outro telefone: a mensagem para o candidato é a mesma, **não** cria outra ficha, e o sino avisa "Candidatura enviada de novo · atenção: telefone diferente do cadastro".
 - [ ] Mais de 5 envios bem-sucedidos na mesma hora, da mesma conexão, são bloqueados.
 - [ ] Na pasta `STORAGE_DIR/arquivos` os arquivos não abrem (estão cifrados).
+
+## Etapa 4: Central de RH
+
+### Conversas
+- [ ] Menu mostra Conversas, Candidatos e Configurações para quem tem "Ver candidatos".
+- [ ] Com a tela Conversas aberta em um computador, enviar uma candidatura pelo celular: ela aparece no topo da lista **sem recarregar**, com o indicador verde de não lida, e o sino conta +1.
+- [ ] A lista mostra foto, nome, unidade, última mensagem, horário, status e tags.
+- [ ] Buscar por nome, pelo código (C-000001), pelo CPF completo e pelo celular completo.
+- [ ] Filtros por unidade, status, tag, período e "Só não lidas"; "Limpar filtros".
+- [ ] Abrir a conversa zera o indicador de não lidas (só para você; outra pessoa da equipe continua vendo como não lida).
+- [ ] Enviar mensagem (Enter envia, Shift+Enter quebra linha) e anexar PDF/JPG; com duas pessoas abertas na mesma conversa, a mensagem aparece para a outra na hora.
+- [ ] O aviso "Candidatura recebida" aparece no centro da conversa com o ícone de "não aparece para o candidato".
+- [ ] No celular: lista → conversa em tela cheia → seta para voltar.
+
+### Perfil lateral
+- [ ] Botão de informação abre o perfil (no celular por cima da conversa).
+- [ ] "Ver currículo" abre o arquivo; baixar também. Os dois aparecem na Auditoria.
+- [ ] CPF aparece mascarado; "mostrar" revela e fica na Auditoria (só para quem edita candidatos).
+- [ ] Mudar o status pede confirmação, aceita motivo e aparece no Histórico com nome, data e horário.
+- [ ] Mudar o status atualiza as "Etapas no portal do candidato".
+- [ ] Adicionar e tirar tags; aparecem na lista e no Histórico.
+- [ ] Observação interna: adicionar, ver o autor e excluir só as próprias.
+- [ ] Candidato que se candidatou de novo com outro telefone mostra o aviso amarelo no perfil.
+- [ ] "Corrigir dados": trocar telefone e unidade; uma gestora sem acesso à unidade nova deixa de ver o candidato.
+
+### Configurações
+- [ ] Criar status novo com cor, ordem e como aparece no portal; editar; excluir (recusado se houver candidato nele).
+- [ ] Os 5 status iniciais podem ser renomeados, mas não excluídos.
+- [ ] Criar, editar e excluir tags; excluir uma tag tira ela de todos os candidatos.
+- [ ] Perfil sem "Criar e editar status e tags" vê as listas, mas sem os botões.
+
+### Permissões e unidades
+- [ ] Gestora com acesso só à unidade A não vê candidatos da unidade B nem pelo endereço direto (/conversas?c=...).
+- [ ] Perfil sem "Ver e baixar currículo" não consegue abrir o currículo (nem pelo endereço).

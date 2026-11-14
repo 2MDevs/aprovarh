@@ -4,6 +4,9 @@ import { SessaoProvider, useSessao } from './app/sessao';
 import { Carregando, ToastProvider } from './components/ui';
 import { Login } from './pages/acesso/Login';
 import { Candidatura } from './pages/publico/Candidatura';
+import { Candidatos } from './pages/central/Candidatos';
+import { Configuracoes } from './pages/central/Configuracoes';
+import { Conversas } from './pages/central/Conversas';
 import { DefinirSenha, TelaBloqueada, TrocarSenhaObrigatoria } from './pages/acesso/Senhas';
 import { Administracao } from './pages/administracao/Administracao';
 import { Auditoria } from './pages/auditoria/Auditoria';
@@ -53,6 +56,9 @@ function Rotas() {
         <Route path="/definir-senha" element={<DefinirSenha />} />
         <Route element={<Layout />}>
           <Route index element={<Navigate to={inicio} replace />} />
+          <Route path="/conversas" element={<Conversas />} />
+          <Route path="/candidatos" element={<Candidatos />} />
+          <Route path="/configuracoes" element={<Configuracoes />} />
           <Route path="/administracao" element={<Administracao />} />
           <Route path="/dispositivos" element={<Dispositivos />} />
           <Route path="/auditoria" element={<Auditoria />} />
