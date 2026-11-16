@@ -56,6 +56,15 @@ docs/                documentação e artefatos da plataforma
 
 > A VPS é compartilhada: use pasta, usuário, banco, porta e serviços **próprios do aprovaRH**. Não altere nada de outros projetos.
 
+**Jeito rápido (recomendado):** como root, clone o repositório e rode o instalador. Ele confere antes se pasta, banco, porta, serviços e endereço estão livres (e para sem mexer em nada se não estiverem), cria tudo o que é do aprovaRH, gera senhas e chaves no próprio servidor, configura o Nginx e o HTTPS só deste endereço e instala o botão "Atualizar sistema".
+
+```bash
+git clone https://github.com/2MDevs/aprovarh.git /var/www/aprovarh
+bash /var/www/aprovarh/scripts/instalar-vps.sh teste.hummmgestao.com.br
+```
+
+Os passos abaixo são o mesmo processo feito à mão.
+
 1. **Banco** (como usuário `postgres`):
    ```bash
    sudo -u postgres psql -c "CREATE USER aprovarh WITH PASSWORD 'troque-esta-senha';"
