@@ -177,10 +177,13 @@ export function Modal({
   children: ReactNode; rodape?: ReactNode; largura?: string;
 }) {
   const caixa = useRef<HTMLDivElement>(null);
+  // onFechar numa referência: se a tela de trás redesenhar, o modal não pode "reabrir" e roubar o foco do campo.
+  const fechar = useRef(onFechar);
+  fechar.current = onFechar;
   useEffect(() => {
     if (!aberto) return;
     const anterior = document.activeElement as HTMLElement | null;
-    const esc = (e: KeyboardEvent) => e.key === 'Escape' && onFechar();
+    const esc = (e: KeyboardEvent) => e.key === 'Escape' && fechar.current();
     document.addEventListener('keydown', esc);
     document.body.style.overflow = 'hidden';
     setTimeout(() => caixa.current?.querySelector<HTMLElement>('input, select, textarea, button:not([data-fechar])')?.focus(), 30);
@@ -189,7 +192,7 @@ export function Modal({
       document.body.style.overflow = '';
       anterior?.focus?.();
     };
-  }, [aberto, onFechar]);
+  }, [aberto]);
   if (!aberto) return null;
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-grafite/50 backdrop-blur-[2px] sm:items-center sm:p-4" onMouseDown={(e) => e.target === e.currentTarget && onFechar()}>

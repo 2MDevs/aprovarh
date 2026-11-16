@@ -42,6 +42,7 @@ export function criarApp() {
           scriptSrc: ["'self'"],
           styleSrc: ["'self'", "'unsafe-inline'"],
           imgSrc: ["'self'", 'data:', 'blob:'],
+          frameSrc: ["'self'", 'blob:'], // visualizador de currículo (PDF) dentro da tela
           fontSrc: ["'self'", 'data:'],
           connectSrc: ["'self'"],
           frameAncestors: ["'none'"],

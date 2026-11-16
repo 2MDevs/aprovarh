@@ -1,5 +1,6 @@
 import { ChevronDown, Copy, Download, Eye, FileText, KeyRound, Pencil, Plus, Trash2, X } from 'lucide-react';
 import { useEffect, useState, type ReactNode } from 'react';
+import { VisualizadorArquivo } from './VisualizadorArquivo';
 import { useSessao } from '../../app/sessao';
 import { Aviso, Botao, Campo, Carregando, Confirmar, ErroCarregar, Interruptor, Modal, Selecao, Selo, useAviso } from '../../components/ui';
 import { api, ApiError } from '../../lib/api';
@@ -22,6 +23,7 @@ export function PerfilCandidato({ candidatoId, versao, onFechar, onMudou }: { ca
   const [editar, setEditar] = useState(false);
   const [trocarStatus, setTrocarStatus] = useState<string | null>(null);
   const [cpf, setCpf] = useState<string | null>(null);
+  const [vendo, setVendo] = useState<string | null>(null);
   const avisar = useAviso();
 
   useEffect(() => {
@@ -48,6 +50,7 @@ export function PerfilCandidato({ candidatoId, versao, onFechar, onMudou }: { ca
   };
   const tagsDisponiveis = op.tags.filter((t) => !p.tags.some((x) => x.id === t.id));
   const curriculo = p.arquivos.find((a) => a.id === p.curriculoId);
+  const arquivoVisto = p.arquivos.find((a) => a.id === vendo);
   const ultimaCandidatura = p.historico.candidaturas[0];
 
   return (
@@ -140,10 +143,13 @@ export function PerfilCandidato({ candidatoId, versao, onFechar, onMudou }: { ca
       <AcessoPortal p={p} pode={pode('portal.liberar')} onMudou={() => { void recarregar(); onMudou(); }} />
       {pode('automacoes.ver') && <AutomacoesDoCandidato candidatoId={p.id} versao={versao} />}
 
+      {arquivoVisto && (
+        <VisualizadorArquivo url={urlArquivo(p.id, arquivoVisto.id)} urlBaixar={urlArquivo(p.id, arquivoVisto.id, 'baixar')} nome={arquivoVisto.nome} tipoMime={arquivoVisto.tipoMime} onFechar={() => setVendo(null)} />
+      )}
       <Secao titulo="Currículo e arquivos">
         {curriculo && pode('candidatos.curriculo.baixar') && (
           <div className="mb-3 flex gap-2">
-            <a href={urlArquivo(p.id, curriculo.id)} target="_blank" rel="noreferrer" className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-full bg-destaque px-4 text-sm font-semibold text-destaque-texto"><Eye className="size-4" /> Ver currículo</a>
+            <button type="button" onClick={() => setVendo(curriculo.id)} className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-full bg-destaque px-4 text-sm font-semibold text-destaque-texto"><Eye className="size-4" /> Ver currículo</button>
             <a href={urlArquivo(p.id, curriculo.id, 'baixar')} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-borda px-4 text-sm font-semibold" aria-label="Baixar currículo"><Download className="size-4" /></a>
           </div>
         )}
@@ -152,6 +158,9 @@ export function PerfilCandidato({ candidatoId, versao, onFechar, onMudou }: { ca
             <li key={a.id} className="flex items-center gap-2 text-sm">
               <FileText className="size-4 shrink-0 text-suave" aria-hidden />
               <span className="min-w-0 flex-1 truncate">{a.nome}<span className="block text-xs text-suave">{{ curriculo: 'Currículo', foto: 'Foto 3x4', anexo: 'Anexo' }[a.tipo]} · {bytes(a.tamanho)} · {data(a.em)}</span></span>
+              {pode('candidatos.curriculo.baixar') && (
+                <button type="button" onClick={() => setVendo(a.id)} className="grid size-9 place-items-center rounded-full hover:bg-superficie-2" aria-label={`Ver ${a.nome}`}><Eye className="size-4" /></button>
+              )}
               {pode('candidatos.curriculo.baixar') && (
                 <a href={urlArquivo(p.id, a.id, 'baixar')} className="grid size-9 place-items-center rounded-full hover:bg-superficie-2" aria-label={`Baixar ${a.nome}`}><Download className="size-4" /></a>
               )}

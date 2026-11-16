@@ -50,7 +50,7 @@ export function Conta() {
         <div className="cartao flex flex-col p-5">
           <span className="grid size-11 place-items-center rounded-xl bg-creme text-grafite dark:bg-amarelo/15 dark:text-amarelo"><ShieldCheck className="size-5" /></span>
           <p className="mt-3 flex items-center gap-2 font-semibold">PIN de desbloqueio <Selo tom={u.temPin ? 'verde' : 'cinza'}>{u.temPin ? 'Criado' : 'Sem PIN'}</Selo></p>
-          <p className="flex-1 text-sm text-suave">Desbloqueia a tela depois de {sessao?.bloqueioMinutos ?? 10} minutos sem uso, sem digitar a senha.</p>
+          <p className="flex-1 text-sm text-suave">{sessao?.bloqueioMinutos ? `Desbloqueia a tela depois de ${sessao.bloqueioMinutos} minutos sem uso, sem digitar a senha.` : 'O bloqueio de tela por inatividade está desligado.'}</p>
           <div className="mt-4 flex gap-2">
             <Botao variante="secundario" className="flex-1" onClick={() => setModal('pin')}>{u.temPin ? 'Alterar PIN' : 'Criar PIN'}</Botao>
             {u.temPin && <Botao variante="fantasma" onClick={() => setRemoverPin(true)}>Remover</Botao>}
