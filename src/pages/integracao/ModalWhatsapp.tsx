@@ -112,7 +112,7 @@ export function ModalWhatsapp({ onFechar, onErro }: PropsModal) {
           <section>
             <h3 className="mb-1 font-semibold">Servidor da Evolution API</h3>
             <p className="mb-3 text-[13px] text-suave">
-              Com a chave global (apikey) da Evolution, o aprovaRH cria a instância sozinho ao conectar. O webhook e o token dele também são configurados sozinhos.
+              Informe só o endereço e a chave global (apikey) da Evolution. A instância ("aprovarh"), o webhook e o token dele são criados e configurados sozinhos quando você conecta o celular.
             </p>
             <CamposGrupo itens={filtrar(EVOLUTION).map(limparRotulo)} valores={g.valores} setValores={g.setValores} />
           </section>
