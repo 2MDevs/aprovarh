@@ -20,11 +20,11 @@ Desenvolvido por **Marcos Monteiro (TI - Tecnologia da Informação da Hummm! Pi
 | 7B. WhatsApp: telas | ✅ concluída |
 | 8A. Automações: motor (servidor) | ✅ concluída |
 | 8B. Automações: construtor visual e telas | ✅ concluída |
-| **9A. Visão geral (dashboard)** | 🔄 este PR |
-| 9B. Documentação e Cronograma em PDF, manual rápido e checklist final | próxima |
+| 9A. Visão geral (dashboard) | ✅ concluída |
+| **9B. Documentação e Cronograma em PDF, manual rápido e checklist final** | 🔄 este PR |
 | 3 a 9 | veja o [plano](docs/PLANO.md) |
 
-Documentos: [Plano](docs/PLANO.md) · [Arquitetura](docs/ARQUITETURA.md) · [Modelo de dados](docs/MODELO-DE-DADOS.md) · [Telas](docs/TELAS.md) · [Decisões](docs/DECISOES.md) · [API da base](docs/API-BASE.md) · [Roteiro de testes](docs/ROTEIRO-DE-TESTES.md) · [WhatsApp](docs/WHATSAPP.md) · [Automações](docs/AUTOMACOES.md)
+Documentos: [Plano](docs/PLANO.md) · [Arquitetura](docs/ARQUITETURA.md) · [Modelo de dados](docs/MODELO-DE-DADOS.md) · [Telas](docs/TELAS.md) · [Decisões](docs/DECISOES.md) · [API da base](docs/API-BASE.md) · [Roteiro de testes](docs/ROTEIRO-DE-TESTES.md) · [WhatsApp](docs/WHATSAPP.md) · [Automações](docs/AUTOMACOES.md) · [Manual rápido](docs/MANUAL-RAPIDO.md) · [Checklist final](docs/CHECKLIST-FINAL.md)
 
 ## Tecnologia
 
@@ -106,6 +106,17 @@ docs/                documentação e artefatos da plataforma
 1. Entre com `ADMIN_EMAIL` / `ADMIN_INITIAL_PASSWORD`. Como o SMTP ainda não está configurado, você entra sem 2FA (**modo de configuração inicial**) e precisa trocar a senha.
 2. Cadastre o desenvolvedor (e-mail que está em `DEVELOPER_EMAILS`). Ele recebe o perfil Desenvolvedor automaticamente.
 3. O desenvolvedor configura o SMTP em **Integração**. A partir daí o 2FA por e-mail passa a valer para todos, e as sessões abertas no modo de configuração são encerradas.
+
+## Documentos do projeto
+
+Também aparecem em **Sistema › Artefatos da plataforma**:
+- [Documentação do Projeto (PDF)](<docs/aprovaRH - Documentacao do Projeto - Hummm Pizzas.pdf>)
+- [Cronograma e Custos (PDF)](<docs/aprovaRH - Cronograma e Custos - Hummm Pizzas.pdf>)
+- [Manual rápido](docs/MANUAL-RAPIDO.md)
+- [Checklist final](docs/CHECKLIST-FINAL.md)
+- [Roteiro de testes](docs/ROTEIRO-DE-TESTES.md)
+
+Para conferir o motor de automações sem banco: `npm run test:automacoes`.
 
 ## Variáveis de ambiente
 

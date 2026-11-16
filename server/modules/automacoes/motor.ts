@@ -200,7 +200,13 @@ export async function processarEsperas(limite = 100): Promise<number> {
 // ═══════════════════════ 3. Passos ═══════════════════════
 async function concluir(db: PoolClient, execucaoId: string) {
   // O contexto pode ter dados pessoais (resposta do candidato): some no fim.
-  await db.query(`UPDATE automacao_execucoes SET situacao = 'concluida', contexto = NULL, finalizada_em = now(), atualizada_em = now() WHERE id = $1`, [execucaoId]);
+  const r = await db.query<{ automacao_id: string; numero: string; passos: number; nome: string }>(
+    `UPDATE automacao_execucoes x SET situacao = 'concluida', contexto = NULL, finalizada_em = now(), atualizada_em = now()
+       FROM automacoes a WHERE x.id = $1 AND a.id = x.automacao_id RETURNING x.automacao_id, x.numero::text, x.passos, a.nome`,
+    [execucaoId],
+  );
+  const x = r.rows[0];
+  if (x) await auditar({ acao: 'automacao.execucao_concluida', resultado: 'sucesso', item: { tipo: 'automacao', id: x.automacao_id, nome: x.nome }, detalhes: { execucao: Number(x.numero), passos: x.passos }, ator: ATOR_MOTOR }, db);
 }
 
 type Resultado = 'continua' | 'parou';
