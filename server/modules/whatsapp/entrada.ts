@@ -4,6 +4,7 @@ import { publicar } from '../../core/tempoReal.ts';
 import { pool, transaction } from '../../db/pool.ts';
 import { decrypt, encrypt, hmac } from '../../lib/crypto.ts';
 import { type EventoEntrada } from './normalizar.ts';
+import { automacaoCuidaDasRespostas } from '../automacoes/silencio.ts';
 import { tratarResposta } from './respostas.ts';
 
 export { eventosEvolution, eventosMeta, type EventoEntrada } from './normalizar.ts';
@@ -81,8 +82,8 @@ async function processarMensagem(db: PoolClient, e: Extract<EventoEntrada, { tip
   await db.query('INSERT INTO eventos_dominio (tipo, candidato_id, dados) VALUES ($1, $2, $3)', ['mensagem.recebida', cand.id, JSON.stringify({ mensagemId: m.rows[0].id, canal: 'whatsapp' })]);
   await auditar({ acao: 'mensagem.recebida', resultado: 'sucesso', item: { tipo: 'candidato', id: cand.id, nome: cand.codigo }, detalhes: { canal: 'whatsapp', mensagemId: m.rows[0].id }, ator: { usuarioNome: `Candidato ${cand.nome} (WhatsApp)` } }, db);
   await publicar(db, { tipo: 'mensagem.nova', candidatoId: cand.id, unidadeId: cand.unidade_id });
-  // Respostas da entrevista (SIM / NÃO / data), se estiverem ligadas.
-  await tratarResposta(db, cand.id, e.texto);
+  // Respostas da entrevista (SIM / NÃO / data), se estiverem ligadas e nenhuma automação estiver esperando a resposta.
+  if (!(await automacaoCuidaDasRespostas(db, cand.id))) await tratarResposta(db, cand.id, e.texto);
 }
 
 /** Rotina do Worker: processa os eventos guardados, um por transação. */

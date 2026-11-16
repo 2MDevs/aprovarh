@@ -3,7 +3,7 @@ import { filtroUnidades } from '../../core/access.ts';
 import { publicar } from '../../core/tempoReal.ts';
 import { pool, type Db } from '../../db/pool.ts';
 import { decrypt } from '../../lib/crypto.ts';
-import { notFound } from '../../lib/http.ts';
+import { badRequest, notFound } from '../../lib/http.ts';
 import type { UsuarioContexto } from '../../types.d.ts';
 
 export const ETAPAS = ['candidatura', 'analise', 'entrevista', 'resultado'] as const;
@@ -72,4 +72,51 @@ export async function avisarMudanca(db: PoolClient, candidatoId: string, unidade
 
 export async function registrarEvento(db: PoolClient, tipo: string, candidatoId: string, dados: Record<string, unknown>) {
   await db.query('INSERT INTO eventos_dominio (tipo, candidato_id, dados) VALUES ($1, $2, $3)', [tipo, candidatoId, JSON.stringify(dados)]);
+}
+
+export interface AutorMudanca { tipo: 'usuario' | 'automacao' | 'sistema'; id: string | null; nome: string }
+
+/**
+ * Muda o status (histórico, linha do tempo, evento e aviso em tempo real). Usado pela tela e pelas automações.
+ * Devolve null se já estava nesse status. Quem chama registra a auditoria.
+ */
+export async function alterarStatusCandidato(db: PoolClient, candidatoId: string, statusId: string, autor: AutorMudanca, motivo?: string | null) {
+  const c = await db.query<{ status_id: string; status_nome: string; unidade_id: string; codigo: string }>(
+    `SELECT c.status_id, s.nome AS status_nome, c.unidade_id, c.codigo FROM candidatos c JOIN status s ON s.id = c.status_id WHERE c.id = $1 FOR UPDATE OF c`,
+    [candidatoId],
+  );
+  const atual = c.rows[0];
+  if (!atual) throw notFound('Candidato não encontrado.');
+  if (atual.status_id === statusId) return null;
+  const s = await db.query<{ nome: string }>('SELECT nome FROM status WHERE id = $1 AND ativo', [statusId]);
+  if (!s.rowCount) throw badRequest('Status não encontrado.');
+  await db.query('UPDATE candidatos SET status_id = $2 WHERE id = $1', [candidatoId, statusId]);
+  await db.query(
+    `INSERT INTO status_historico (candidato_id, status_anterior_id, status_novo_id, autor_tipo, autor_usuario_id, autor_nome, motivo)
+     VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+    [candidatoId, atual.status_id, statusId, autor.tipo, autor.tipo === 'usuario' ? autor.id : null, autor.nome, motivo ?? null],
+  );
+  await recalcularLinhaDoTempo(db, candidatoId, statusId);
+  await registrarEvento(db, 'candidato.status_alterado', candidatoId, { de: atual.status_id, para: statusId, autor });
+  await avisarMudanca(db, candidatoId, atual.unidade_id);
+  return { de: atual.status_nome, para: s.rows[0].nome, codigo: atual.codigo };
+}
+
+/** Coloca ou tira uma tag. Devolve null se já estava assim. Quem chama registra a auditoria. */
+export async function alterarTagCandidato(db: PoolClient, candidatoId: string, tagId: string, acao: 'adicionar' | 'remover', autor: AutorMudanca) {
+  const t = await db.query<{ nome: string }>('SELECT nome FROM tags WHERE id = $1 AND ativa', [tagId]);
+  if (!t.rowCount) throw badRequest('Tag não encontrada.');
+  const c = await db.query<{ unidade_id: string; codigo: string }>('SELECT unidade_id, codigo FROM candidatos WHERE id = $1', [candidatoId]);
+  if (!c.rows[0]) throw notFound('Candidato não encontrado.');
+  const r = acao === 'adicionar'
+    ? await db.query('INSERT INTO candidato_tags (candidato_id, tag_id, adicionada_por) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING', [candidatoId, tagId, autor.tipo === 'usuario' ? autor.id : null])
+    : await db.query('DELETE FROM candidato_tags WHERE candidato_id = $1 AND tag_id = $2', [candidatoId, tagId]);
+  if (!r.rowCount) return null;
+  await db.query(
+    `INSERT INTO tags_historico (candidato_id, tag_id, acao, autor_tipo, autor_usuario_id, autor_nome) VALUES ($1, $2, $3, $4, $5, $6)`,
+    [candidatoId, tagId, acao === 'adicionar' ? 'adicionada' : 'removida', autor.tipo, autor.tipo === 'usuario' ? autor.id : null, autor.nome],
+  );
+  await registrarEvento(db, acao === 'adicionar' ? 'candidato.tag_adicionada' : 'candidato.tag_removida', candidatoId, { tagId, autor });
+  await avisarMudanca(db, candidatoId, c.rows[0].unidade_id);
+  return { tag: t.rows[0].nome, codigo: c.rows[0].codigo };
 }

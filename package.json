@@ -1,6 +1,6 @@
 {
   "name": "aprovarh",
-  "version": "0.10.0",
+  "version": "0.11.0",
   "private": true,
   "description": "aprovaRH: plataforma de recrutamento da Hummm! Pizzas",
   "type": "module",
@@ -14,7 +14,8 @@
     "migrate": "tsx server/db/migrate.ts",
     "build": "vite build",
     "typecheck": "tsc --noEmit",
-    "dev:web": "vite"
+    "dev:web": "vite",
+    "test:automacoes": "tsx server/testes/automacoes.ts"
   },
   "dependencies": {
     "@fontsource/poppins": "^5.2.6",

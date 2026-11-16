@@ -3,11 +3,12 @@ import { pool, transaction } from './db/pool.ts';
 import { expirarLiberacoes } from './modules/portal/servico.ts';
 import { processarFila } from './modules/whatsapp/envio.ts';
 import { processarEntradas } from './modules/whatsapp/entrada.ts';
+import { agendarDisparos, processarEsperas, processarEventos, processarExecucoes } from './modules/automacoes/motor.ts';
 
 /**
  * Worker: rotinas em segundo plano, em processo separado da API.
  * Nesta etapa: limpeza de sessões, desafios de 2FA e links de senha vencidos.
- * Nas próximas etapas: fila do WhatsApp, expiração diária do portal (00:00 Brasília), lixeira e o motor de automações.
+ * Também: fila e entrada do WhatsApp, expiração do portal e o motor de automações (etapa 8).
  * Cada rotina usa uma trava (advisory lock) para nunca rodar duas vezes ao mesmo tempo.
  */
 interface Rotina {
@@ -18,6 +19,28 @@ interface Rotina {
 }
 
 const rotinas: Rotina[] = [
+  {
+    // Motor de automações: eventos → execuções, esperas vencidas e passos (etapa 8).
+    nome: 'automacoes',
+    intervaloMs: 2_000,
+    trava: 7240105,
+    executar: async () => {
+      const ev = await processarEventos();
+      const es = await processarEsperas();
+      const pa = await processarExecucoes();
+      if (ev || es || pa) return `${ev} evento(s), ${es} espera(s) retomada(s), ${pa} passo(s)`;
+    },
+  },
+  {
+    // Gatilhos agendados: "Data da entrevista chegou", "Data programada" e "Horário programado".
+    nome: 'automacoes-agenda',
+    intervaloMs: 60_000,
+    trava: 7240106,
+    executar: async () => {
+      const n = await agendarDisparos();
+      if (n) return `${n} disparo(s) agendado(s)`;
+    },
+  },
   {
     // Mensagens recebidas pelo WhatsApp (guardadas pelo webhook) e respostas automáticas da entrevista.
     nome: 'whatsapp-entrada',
