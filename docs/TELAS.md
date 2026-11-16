@@ -20,6 +20,14 @@
 7. **Configurações**: status, tags, textos padrão, modelos do WhatsApp, respostas aceitas como SIM/NÃO, limites de arquivos, aviso de privacidade.
 8. Telas padrão: **Sistema**, **Integração** (com o card WhatsApp Business), **Auditoria**, **Dispositivos**, **Segurança da conta**, **Usuários e unidades**.
 
+### WhatsApp nas telas (etapa 7B)
+
+- **Integração › WhatsApp** (Desenvolvedor): escolha do provedor (Meta ou Evolution), situação e o que falta, endereço do webhook com botão copiar, dados do provedor, modelos aprovados da Meta (sincronizar e escolher), teste de conexão, respostas automáticas e tentativas de envio.
+- **Conversa:** com o WhatsApp configurado, a gestora escolhe **Portal** ou **WhatsApp** acima da caixa de texto. Na Meta, mostra até quando a janela de 24 h está aberta e bloqueia o texto livre quando fechou. Arquivos continuam só pelo portal. Mensagens na fila mostram um relógio.
+- **Liberar acesso ao portal:** opção "Enviar pelo WhatsApp" (ligada por padrão). Enviado assim, o código não aparece na tela.
+- **Agendar/remarcar entrevista:** opção "Enviar pelo WhatsApp" (ligada por padrão), com a pergunta SIM ou NÃO.
+- **Contatos não identificados:** ícone no topo da lista de Conversas, só para quem enxerga todas as unidades. Mostra nome do perfil, número, última mensagem; copiar número e arquivar.
+
 ## 2. Construtor de automações
 
 ```

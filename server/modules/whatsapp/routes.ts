@@ -1,4 +1,5 @@
-import express, { Router } from 'express';
+import express, { Router, type Request } from 'express';
+import { filtroUnidades } from '../../core/access.ts';
 import { z } from 'zod';
 import { auditar, auditarReq } from '../../core/audit.ts';
 import { pool, transaction } from '../../db/pool.ts';
@@ -166,7 +167,13 @@ whatsappCentralRouter.post('/candidatos/:id/mensagens', exigirPermissao('convers
   res.status(201).json({ id: mensagemId });
 }));
 
+/** Contatos sem candidato não têm unidade: só quem enxerga todas as unidades vê a lista. */
+function exigirTodasUnidades(req: Request) {
+  if (filtroUnidades(req.usuario!) !== null) throw new HttpError(403, 'Só quem enxerga todas as unidades vê os contatos não identificados.', 'sem_permissao');
+}
+
 whatsappCentralRouter.get('/nao-identificados', h(async (req, res) => {
+  exigirTodasUnidades(req);
   const { rows } = await pool.query(
     `SELECT id, telefone, nome_perfil, ultima_mensagem, mensagens, primeira_em, ultima_em FROM contatos_nao_identificados
       WHERE arquivado_em IS NULL AND vinculado_a IS NULL ORDER BY ultima_em DESC LIMIT 200`,
@@ -182,6 +189,7 @@ whatsappCentralRouter.get('/nao-identificados', h(async (req, res) => {
 }));
 
 whatsappCentralRouter.post('/nao-identificados/:id/arquivar', exigirPermissao('conversas.responder'), h(async (req, res) => {
+  exigirTodasUnidades(req);
   const id = parse(z.string().uuid(), req.params.id);
   const r = await pool.query('UPDATE contatos_nao_identificados SET arquivado_em = now() WHERE id = $1 AND arquivado_em IS NULL', [id]);
   if (!r.rowCount) throw notFound('Contato não encontrado.');

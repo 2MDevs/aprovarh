@@ -1,4 +1,4 @@
-import { ArrowLeft, Bot, Check, CheckCheck, Download, EyeOff, FileText, Info, Loader2, Paperclip, Send, X } from 'lucide-react';
+import { ArrowLeft, Bot, Check, CheckCheck, Clock, Download, EyeOff, FileText, Info, Loader2, MessageCircle, Monitor, Paperclip, Send, X } from 'lucide-react';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { useSessao } from '../../app/sessao';
 import { Aviso, useAviso } from '../../components/ui';
@@ -11,6 +11,8 @@ import { urlArquivo, type Mensagem, type Perfil } from './tipos';
 const FUSO = { timeZone: 'America/Sao_Paulo' } as const;
 const diaDe = (v: string) => new Date(v).toLocaleDateString('pt-BR', { ...FUSO, weekday: 'long', day: '2-digit', month: 'long' });
 const hora = (v: string) => new Date(v).toLocaleTimeString('pt-BR', { ...FUSO, hour: '2-digit', minute: '2-digit' });
+
+interface SituacaoWhatsapp { configurado: boolean; provedor: 'meta' | 'evolution'; janelaAte: string | null; podeTextoLivre: boolean }
 
 interface PaginaMensagens { temMais: boolean; lidaAte: string | null; mensagens: Mensagem[] }
 
@@ -128,7 +130,7 @@ export function Chat({ candidatoId, versao, onVoltar, onAbrirPerfil, onLida }: {
       </div>
 
       {pode('conversas.responder') ? (
-        <Escrever candidatoId={candidatoId} onEnviada={() => void carregarRecentes()} />
+        <Escrever candidatoId={candidatoId} versao={versao} onEnviada={() => void carregarRecentes()} />
       ) : (
         <p className="border-t border-borda bg-superficie px-4 py-3 text-center text-sm text-suave">Você pode ler a conversa, mas não responder.</p>
       )}
@@ -165,6 +167,7 @@ function Balao({ m, candidatoId, podeBaixar }: { m: Mensagem; candidatoId: strin
           {minha && m.situacaoEntrega === 'lida' && <CheckCheck className="size-3.5 text-sky-600" aria-label="Lida" />}
           {minha && m.situacaoEntrega === 'entregue' && <CheckCheck className="size-3.5" aria-label="Entregue" />}
           {minha && m.situacaoEntrega === 'enviada' && <Check className="size-3.5" aria-label="Enviada" />}
+          {minha && m.situacaoEntrega === 'pendente' && <Clock className="size-3.5" aria-label="Na fila de envio" />}
           {minha && m.situacaoEntrega === 'falhou' && <span className="font-semibold text-vermelho">Falhou</span>}
         </p>
       </div>
@@ -190,8 +193,14 @@ function Anexo({ arquivo, candidatoId, podeBaixar }: { arquivo: NonNullable<Mens
   );
 }
 
-function Escrever({ candidatoId, onEnviada }: { candidatoId: string; onEnviada: () => void }) {
+function Escrever({ candidatoId, versao, onEnviada }: { candidatoId: string; versao: number; onEnviada: () => void }) {
   const [texto, setTexto] = useState('');
+  const [canal, setCanal] = useState<'portal' | 'whatsapp'>('portal');
+  const wa = useDados<SituacaoWhatsapp>(`/api/central/whatsapp/candidatos/${candidatoId}`);
+  const recarregarWa = wa.recarregar;
+  useEffect(() => { void recarregarWa(); }, [versao, recarregarWa]); // a janela de 24 h abre quando o candidato escreve
+  const pelaWa = canal === 'whatsapp';
+  const bloqueadoWa = pelaWa && !wa.dados?.podeTextoLivre;
   const [arquivo, setArquivo] = useState<File | null>(null);
   const [enviando, setEnviando] = useState(false);
   const avisar = useAviso();
@@ -206,10 +215,12 @@ function Escrever({ candidatoId, onEnviada }: { candidatoId: string; onEnviada: 
   }, [texto]);
 
   const enviar = async () => {
-    if (enviando || (!texto.trim() && !arquivo)) return;
+    if (enviando || bloqueadoWa || (!texto.trim() && !arquivo)) return;
     setEnviando(true);
     try {
-      if (arquivo) {
+      if (pelaWa) {
+        await api.post(`/api/central/whatsapp/candidatos/${candidatoId}/mensagens`, { texto: texto.trim() });
+      } else if (arquivo) {
         const dados = new FormData();
         if (texto.trim()) dados.set('legenda', texto.trim());
         dados.set('arquivo', arquivo);
@@ -238,6 +249,28 @@ function Escrever({ candidatoId, onEnviada }: { candidatoId: string; onEnviada: 
 
   return (
     <div className="border-t border-borda bg-superficie px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3">
+      {wa.dados?.configurado && (
+        <div className="mb-2 flex flex-wrap items-center gap-2" role="radiogroup" aria-label="Enviar por">
+          {([['portal', 'Portal', Monitor], ['whatsapp', 'WhatsApp', MessageCircle]] as const).map(([id, rotulo, Icone]) => (
+            <button key={id} role="radio" aria-checked={canal === id} onClick={() => { setCanal(id); if (id === 'whatsapp') setArquivo(null); }}
+              className={`inline-flex min-h-9 items-center gap-1.5 rounded-full px-3 text-xs font-semibold transition ${canal === id ? 'bg-grafite text-white dark:bg-amarelo dark:text-grafite' : 'border border-borda text-suave hover:text-texto'}`}>
+              <Icone className="size-3.5" aria-hidden />{rotulo}
+            </button>
+          ))}
+          {pelaWa && wa.dados.provedor === 'meta' && (
+            <span className="text-[11px] text-suave">
+              {wa.dados.podeTextoLivre && wa.dados.janelaAte
+                ? `Janela aberta até ${hora(wa.dados.janelaAte)} de ${new Date(wa.dados.janelaAte).toLocaleDateString('pt-BR', FUSO)}`
+                : 'Janela de 24 h fechada'}
+            </span>
+          )}
+        </div>
+      )}
+      {bloqueadoWa && (
+        <p className="mb-2 rounded-xl bg-amarelo/25 px-3 py-2 text-[13px]">
+          Pela Meta, só dá para escrever livremente até 24 h depois da última mensagem do candidato. Use o portal, ou espere ele escrever no WhatsApp.
+        </p>
+      )}
       {arquivo && (
         <div className="mb-2 flex items-center gap-2 rounded-xl bg-superficie-2 px-3 py-2 text-sm">
           <Paperclip className="size-4 text-suave" /> <span className="flex-1 truncate">{arquivo.name}</span>
@@ -245,19 +278,23 @@ function Escrever({ candidatoId, onEnviada }: { candidatoId: string; onEnviada: 
         </div>
       )}
       <div className="flex items-end gap-2">
-        <label className="grid size-11 shrink-0 cursor-pointer place-items-center rounded-full hover:bg-superficie-2" title="Anexar arquivo">
-          <Paperclip className="size-5" /><span className="sr-only">Anexar arquivo</span>
-          <input type="file" className="sr-only" accept=".pdf,.doc,.docx,image/jpeg,image/png" onChange={(e) => { setArquivo(e.target.files?.[0] ?? null); e.target.value = ''; }} />
-        </label>
+        {!pelaWa && (
+          <label className="grid size-11 shrink-0 cursor-pointer place-items-center rounded-full hover:bg-superficie-2" title="Anexar arquivo">
+            <Paperclip className="size-5" /><span className="sr-only">Anexar arquivo</span>
+            <input type="file" className="sr-only" accept=".pdf,.doc,.docx,image/jpeg,image/png" onChange={(e) => { setArquivo(e.target.files?.[0] ?? null); e.target.value = ''; }} />
+          </label>
+        )}
         <textarea ref={campo} value={texto} onChange={(e) => setTexto(e.target.value)} onKeyDown={teclas} rows={1} maxLength={4000}
-          placeholder={arquivo ? 'Legenda (opcional)' : 'Escreva uma mensagem'} aria-label="Mensagem"
+          placeholder={pelaWa ? 'Mensagem pelo WhatsApp' : arquivo ? 'Legenda (opcional)' : 'Escreva uma mensagem'} disabled={bloqueadoWa} aria-label="Mensagem"
           className="campo max-h-40 min-h-11 flex-1 resize-none !rounded-2xl !py-2.5" />
-        <button onClick={() => void enviar()} disabled={enviando || (!texto.trim() && !arquivo)} aria-label="Enviar"
+        <button onClick={() => void enviar()} disabled={enviando || bloqueadoWa || (!texto.trim() && !arquivo)} aria-label={pelaWa ? 'Enviar pelo WhatsApp' : 'Enviar'}
           className="grid size-11 shrink-0 place-items-center rounded-full bg-destaque text-destaque-texto disabled:opacity-40">
           {enviando ? <Loader2 className="size-5 animate-spin" /> : <Send className="size-5" />}
         </button>
       </div>
-      <p className="mt-1.5 px-1 text-[11px] text-suave">Enter envia · Shift+Enter quebra a linha · A mensagem aparece para o candidato no portal quando ele tiver acesso.</p>
+      <p className="mt-1.5 px-1 text-[11px] text-suave">
+        Enter envia · Shift+Enter quebra a linha · {pelaWa ? 'Vai para o WhatsApp do candidato e fica registrada aqui.' : 'A mensagem aparece para o candidato no portal quando ele tiver acesso.'}
+      </p>
     </div>
   );
 }

@@ -7,14 +7,14 @@ import { dataHora, relativo } from '../../lib/formato';
 import { useDados } from '../../lib/useDados';
 import { CORES } from './cores';
 
-interface PropsModal { onFechar: () => void; onErro: (e: unknown) => void }
+export interface PropsModal { onFechar: () => void; onErro: (e: unknown) => void }
 
-interface ItemConfig { chave: string; rotulo: string; tipo: 'texto' | 'textoLongo' | 'numero' | 'booleano' | 'segredo' | 'email'; origem: 'banco' | 'env' | 'padrao' | 'nao_definido'; valor: string | null; definido: boolean; min?: number; max?: number }
+export interface ItemConfig { chave: string; rotulo: string; tipo: 'texto' | 'textoLongo' | 'numero' | 'booleano' | 'segredo' | 'email'; origem: 'banco' | 'env' | 'padrao' | 'nao_definido'; valor: string | null; definido: boolean; min?: number; max?: number }
 
 const ORIGEM: Record<ItemConfig['origem'], string> = { banco: 'Salvo pela tela', env: 'Vindo do .env', padrao: 'Padrão', nao_definido: 'Não definido' };
 
 /** Formulário genérico de um grupo de configurações (Banco > .env > padrão). */
-function useGrupo(grupo: 'smtp' | 'seguranca' | 'arquivos' | 'privacidade', onErro: (e: unknown) => void) {
+export function useGrupo(grupo: 'smtp' | 'seguranca' | 'arquivos' | 'privacidade' | 'whatsapp', onErro: (e: unknown) => void) {
   const { dados, erro, carregando } = useDados<ItemConfig[]>(`/api/integracao/config/${grupo}`);
   const [valores, setValores] = useState<Record<string, string>>({});
   useEffect(() => {
@@ -30,7 +30,7 @@ function useGrupo(grupo: 'smtp' | 'seguranca' | 'arquivos' | 'privacidade', onEr
   return { itens: dados, erro, carregando, valores, setValores, salvar };
 }
 
-function CamposGrupo({ itens, valores, setValores }: { itens: ItemConfig[]; valores: Record<string, string>; setValores: (f: (v: Record<string, string>) => Record<string, string>) => void }) {
+export function CamposGrupo({ itens, valores, setValores }: { itens: ItemConfig[]; valores: Record<string, string>; setValores: (f: (v: Record<string, string>) => Record<string, string>) => void }) {
   return (
     <div className="space-y-4">
       {itens.map((i) => {
@@ -60,11 +60,11 @@ function CamposGrupo({ itens, valores, setValores }: { itens: ItemConfig[]; valo
   );
 }
 
-function Rodape({ onFechar, onSalvar, salvando }: { onFechar: () => void; onSalvar: () => void; salvando: boolean }) {
+export function Rodape({ onFechar, onSalvar, salvando }: { onFechar: () => void; onSalvar: () => void; salvando: boolean }) {
   return <><Botao variante="secundario" onClick={onFechar}>Cancelar</Botao><Botao carregando={salvando} onClick={onSalvar}>Salvar</Botao></>;
 }
 
-function useSalvar(onErro: (e: unknown) => void, onFechar: () => void, mensagem: string) {
+export function useSalvar(onErro: (e: unknown) => void, onFechar: () => void, mensagem: string) {
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState('');
   const avisar = useAviso();

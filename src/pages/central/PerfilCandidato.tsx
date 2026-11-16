@@ -297,7 +297,10 @@ function AcessoPortal({ p, pode, onMudou }: { p: Perfil; pode: boolean; onMudou:
   const [revogar, setRevogar] = useState(false);
   const [permiteArquivo, setPermiteArquivo] = useState(false);
   const [ocupado, setOcupado] = useState(false);
-  const [gerado, setGerado] = useState<{ codigo: string; expiraEm: string; mensagemSugerida: string; aviso: string } | null>(null);
+  const [gerado, setGerado] = useState<{ enviadoPorWhatsapp: boolean; codigo: string | null; expiraEm: string; mensagemSugerida: string | null; aviso: string } | null>(null);
+  const wa = useDados<{ configurado: boolean }>(pode ? `/api/central/whatsapp/candidatos/${p.id}` : null);
+  const [enviarWhatsapp, setEnviarWhatsapp] = useState(true);
+  const pelaWa = Boolean(wa.dados?.configurado) && enviarWhatsapp;
   const avisar = useAviso();
   const ativo = p.portal.ativo;
   const hora = (v: string) => new Date(v).toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit' });
@@ -305,7 +308,7 @@ function AcessoPortal({ p, pode, onMudou }: { p: Perfil; pode: boolean; onMudou:
   const gerar = async () => {
     setOcupado(true);
     try {
-      setGerado(await api.post(`/api/central/candidatos/${p.id}/acesso`, { permiteArquivo }));
+      setGerado(await api.post(`/api/central/candidatos/${p.id}/acesso`, { permiteArquivo, enviarWhatsapp: pelaWa }));
       setLiberar(false);
       onMudou();
     } catch (e) {
@@ -350,18 +353,30 @@ function AcessoPortal({ p, pode, onMudou }: { p: Perfil; pode: boolean; onMudou:
         <div className="space-y-4 text-sm">
           <p>O código vale até <strong>23h59 de hoje</strong> (horário de Brasília).{ativo && ' O código atual deixa de valer e quem estiver no portal sai.'}</p>
           <Interruptor ligado={permiteArquivo} onChange={setPermiteArquivo} rotulo="Permitir envio de arquivos" descricao="O candidato poderá mandar documentos pelo chat do portal." />
-          <Aviso>Até a integração com o WhatsApp (etapa 7), envie o código ao candidato você mesma. Depois, o envio será automático.</Aviso>
+          {wa.dados?.configurado ? (
+            <Interruptor ligado={enviarWhatsapp} onChange={setEnviarWhatsapp} rotulo="Enviar pelo WhatsApp"
+              descricao={enviarWhatsapp ? 'O candidato recebe o código e o link. O código não aparece para você nem fica guardado.' : 'O código aparece na tela para você enviar.'} />
+          ) : (
+            <Aviso>O WhatsApp ainda não está configurado. O código aparece na tela para você enviar ao candidato.</Aviso>
+          )}
         </div>
       </Modal>
 
-      <Modal aberto={Boolean(gerado)} onFechar={() => setGerado(null)} titulo="Código gerado" largura="max-w-md" rodape={<Botao onClick={() => setGerado(null)}>Já enviei</Botao>}>
-        {gerado && (
+      <Modal aberto={Boolean(gerado)} onFechar={() => setGerado(null)} titulo={gerado?.enviadoPorWhatsapp ? 'Código enviado' : 'Código gerado'} largura="max-w-md"
+        rodape={<Botao onClick={() => setGerado(null)}>{gerado?.enviadoPorWhatsapp ? 'Fechar' : 'Já enviei'}</Botao>}>
+        {gerado?.enviadoPorWhatsapp && (
+          <div className="space-y-3 text-sm">
+            <Aviso>{gerado.aviso}</Aviso>
+            <p className="text-suave">Válido até {hora(gerado.expiraEm)} de hoje. Acompanhe a entrega na conversa (enviada, entregue, lida). Se falhar, gere um código novo sem o WhatsApp.</p>
+          </div>
+        )}
+        {gerado && !gerado.enviadoPorWhatsapp && gerado.codigo && gerado.mensagemSugerida && (
           <div className="space-y-4">
             <Aviso tipo="atencao">{gerado.aviso}</Aviso>
             <p className="rounded-2xl bg-grafite py-4 text-center font-mono text-3xl font-bold tracking-[0.25em] text-amarelo">{gerado.codigo}</p>
             <p className="text-sm text-suave">Válido até {hora(gerado.expiraEm)} de hoje.</p>
             <div className="rounded-2xl border border-borda p-3 text-sm">{gerado.mensagemSugerida}</div>
-            <Botao variante="secundario" className="w-full" icone={<Copy className="size-4" />} onClick={() => void copiar(gerado.mensagemSugerida)}>Copiar mensagem</Botao>
+            <Botao variante="secundario" className="w-full" icone={<Copy className="size-4" />} onClick={() => void copiar(gerado.mensagemSugerida ?? '')}>Copiar mensagem</Botao>
           </div>
         )}
       </Modal>

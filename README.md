@@ -16,8 +16,9 @@ Desenvolvido por **Marcos Monteiro (TI - Tecnologia da Informação da Hummm! Pi
 | 4B. Central de RH: telas | ✅ concluída |
 | 5. Portal temporário do candidato | ✅ concluída |
 | 6. Agendamento de entrevistas | ✅ concluída |
-| **7A. WhatsApp: servidor** (Meta oficial ou Evolution API) | 🔄 este PR |
-| 7B. WhatsApp: telas | próxima |
+| 7A. WhatsApp: servidor (Meta oficial ou Evolution API) | ✅ concluída |
+| **7B. WhatsApp: telas** | 🔄 este PR |
+| 8. Automações e construtor visual | próxima |
 | 3 a 9 | veja o [plano](docs/PLANO.md) |
 
 Documentos: [Plano](docs/PLANO.md) · [Arquitetura](docs/ARQUITETURA.md) · [Modelo de dados](docs/MODELO-DE-DADOS.md) · [Telas](docs/TELAS.md) · [Decisões](docs/DECISOES.md) · [API da base](docs/API-BASE.md) · [Roteiro de testes](docs/ROTEIRO-DE-TESTES.md) · [WhatsApp](docs/WHATSAPP.md)

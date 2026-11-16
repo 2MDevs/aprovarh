@@ -1,7 +1,7 @@
 import { CalendarPlus, Check, RefreshCw, UserX, X } from 'lucide-react';
 import { useEffect, useState, type ComponentType, type ReactNode } from 'react';
 import { useSessao } from '../../app/sessao';
-import { Aviso, Botao, Campo, Modal, useAviso } from '../../components/ui';
+import { Aviso, Botao, Campo, Interruptor, Modal, useAviso } from '../../components/ui';
 import { api, ApiError } from '../../lib/api';
 import { dataHora } from '../../lib/formato';
 import { useDados } from '../../lib/useDados';
@@ -104,14 +104,17 @@ function ModalAgendar({ candidatoId, unidadeId, remarcar, onFechar, onFeito }: {
   const [erro, setErro] = useState('');
   const [salvando, setSalvando] = useState(false);
   const avisar = useAviso();
+  const wa = useDados<{ configurado: boolean }>(`/api/central/whatsapp/candidatos/${candidatoId}`);
+  const [enviarWhatsapp, setEnviarWhatsapp] = useState(true);
+  const pelaWa = Boolean(wa.dados?.configurado) && enviarWhatsapp;
   const salvar = async () => {
     if (!inicio) return;
     setErro('');
     setSalvando(true);
     try {
-      if (remarcar) await api.post(`/api/entrevistas/${remarcar.id}/remarcar`, { inicioEm: inicio, motivo: motivo || undefined });
-      else await api.post(`/api/entrevistas/candidato/${candidatoId}`, { inicioEm: inicio });
-      avisar(remarcar ? 'Entrevista remarcada.' : 'Entrevista agendada.');
+      if (remarcar) await api.post(`/api/entrevistas/${remarcar.id}/remarcar`, { inicioEm: inicio, motivo: motivo || undefined, enviarWhatsapp: pelaWa });
+      else await api.post(`/api/entrevistas/candidato/${candidatoId}`, { inicioEm: inicio, enviarWhatsapp: pelaWa });
+      avisar(`${remarcar ? 'Entrevista remarcada' : 'Entrevista agendada'}${pelaWa ? ' e mensagem enviada pelo WhatsApp' : ''}.`);
       onFeito();
     } catch (e) {
       setErro(e instanceof ApiError ? e.message : 'Não foi possível salvar.');
@@ -128,7 +131,12 @@ function ModalAgendar({ candidatoId, unidadeId, remarcar, onFechar, onFeito }: {
         {remarcar && <p className="text-sm">Atual: <strong className="capitalize">{quando(remarcar.inicioEm)}</strong></p>}
         <SeletorHorario unidadeId={unidadeId} valor={inicio} onChange={setInicio} ignorarEntrevistaId={remarcar?.id} />
         {remarcar && <Campo rotulo="Motivo (opcional)" value={motivo} onChange={(e) => setMotivo(e.target.value)} maxLength={255} />}
-        {!remarcar && <Aviso>O candidato vê o horário no portal. A partir da etapa 7, ele também recebe a mensagem no WhatsApp para responder SIM ou NÃO.</Aviso>}
+        {wa.dados?.configurado ? (
+          <Interruptor ligado={enviarWhatsapp} onChange={setEnviarWhatsapp} rotulo="Enviar pelo WhatsApp"
+            descricao="O candidato recebe a data e o horário e responde SIM ou NÃO. Se responder NÃO, o sistema oferece outras datas." />
+        ) : (
+          <Aviso>O candidato vê o horário no portal. Com o WhatsApp configurado, ele também recebe a mensagem para responder SIM ou NÃO.</Aviso>
+        )}
       </div>
     </Modal>
   );
