@@ -194,3 +194,25 @@ Antes: configure um dos provedores conforme [WHATSAPP.md](WHATSAPP.md). As telas
 8. **Contatos não identificados:**
    - Entre com quem enxerga todas as unidades: o ícone aparece no topo de Conversas, e o contato desconhecido está lá. Arquivar tira ele da lista.
    - Entre com uma gestora de uma unidade só: o ícone não aparece, e a rota responde 403.
+
+## Etapa 8A: motor de automações (servidor)
+
+As telas chegam na 8B. Até lá, teste pela API ou pelo terminal.
+
+1. **Testes sem banco:** `npm run test:automacoes`. Todos os 19 devem passar.
+2. **Modelo:** `POST /api/automacoes/modelo` cria um rascunho. `GET /api/automacoes/:id` mostra 2 problemas: o status e a tag do ramo SIM.
+3. **Publicar com erro:** `POST /:id/publicar` responde 400 com a lista de problemas.
+4. **Testar:** `POST /:id/testar` com `respostas: ["sim"]`. O caminho vai até "Notificar gestora", com `nadaFoiEnviado: true`, e nenhuma mensagem aparece na conversa de ninguém.
+5. **Publicar e rodar de verdade**, com um candidato de teste autorizado:
+   - Crie uma automação "Tag adicionada → Enviar mensagem pelo chat interno" e publique.
+   - Coloque a tag no candidato. Em segundos, a mensagem do Assistente virtual aparece na conversa, e a execução aparece como "Concluída" em `GET /:id/execucoes`.
+6. **Sem duplicar:** tire e coloque a tag de novo enquanto uma execução estiver esperando. Não abre uma segunda execução.
+7. **Esperar resposta:**
+   - Faça um fluxo com "Aguardar resposta" e mande uma mensagem pelo portal do candidato. A execução continua por "Respondeu".
+   - Sem resposta, segue por "Tempo esgotado" no prazo.
+8. **Respostas da etapa 7 caladas:** com esse fluxo esperando, uma resposta "sim" a uma entrevista não recebe a resposta automática da etapa 7.
+9. **Erro:**
+   - Faça um fluxo com "Atualizar entrevista" para um candidato sem entrevista.
+   - A execução fica "Com erro", a automação também, e o sino avisa.
+   - `POST /execucoes/:id/interromper` encerra a execução.
+10. **Pausar:** pause a automação. Novos eventos não criam execuções, e as que existem ficam paradas até ativar de novo.

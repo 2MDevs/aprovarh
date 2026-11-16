@@ -135,3 +135,24 @@ O portal (`GET /api/portal/sessao`) passa a mandar `entrevista`: data, horário,
 | GET | `/api/central/whatsapp/nao-identificados` · POST `/:id/arquivar` | Números que escreveram e não são de candidatos |
 
 Opções novas: `POST /api/central/candidatos/:id/acesso` aceita `enviarWhatsapp`; `POST /api/entrevistas/candidato/:id` e `/api/entrevistas/:id/remarcar` aceitam `enviarWhatsapp`.
+
+## Automações (etapa 8A) — detalhes em [AUTOMACOES.md](AUTOMACOES.md)
+
+Todas pedem `automacoes.ver`. Editar pede `automacoes.editar`; publicar, ativar, pausar, interromper e reprocessar pedem `automacoes.publicar`.
+
+| Método | Rota | O que faz |
+|---|---|---|
+| GET | `/api/automacoes` | Lista: nome, descrição, criador, situação, versão, gatilho, execuções (total, ativas, com erro), última execução |
+| GET | `/api/automacoes/opcoes` | Status, tags, unidades e WhatsApp, para o construtor |
+| POST | `/api/automacoes` | `{nome, descricao?, unidades?}`: cria um rascunho vazio |
+| POST | `/api/automacoes/modelo` | Cria um rascunho com o fluxo de referência |
+| GET | `/api/automacoes/:id` | Rascunho, problemas da validação, versões publicadas |
+| PUT | `/api/automacoes/:id` | `{nome, descricao, unidades, fluxo}`: salva o rascunho e devolve os problemas |
+| POST | `/api/automacoes/:id/duplicar` · DELETE `/api/automacoes/:id` | Duplicar · excluir (sem execuções ativas) |
+| POST | `/api/automacoes/:id/publicar` | Valida, cria a versão imutável e ativa (400 com `problemas` se houver erros) |
+| POST | `/api/automacoes/:id/ativar` · `/pausar` | Liga ou pausa |
+| POST | `/api/automacoes/:id/testar` | `{fluxo?, unidadeId, statusId?, tagIds, respostas[], entrevista?, acessoAtivo, janelaAberta}`: caminho simulado, `nadaFoiEnviado: true` |
+| GET | `/api/automacoes/:id/execucoes?situacao=&pagina=` | Histórico de execuções |
+| GET | `/api/automacoes/execucoes/:execId` | Passos, espera atual, erro |
+| POST | `/api/automacoes/execucoes/:execId/interromper` · `/reprocessar` | Parar · continuar do passo que falhou |
+| GET | `/api/automacoes/candidato/:candidatoId` | Execuções de um candidato |

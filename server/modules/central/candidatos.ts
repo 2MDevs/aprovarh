@@ -13,7 +13,7 @@ import { liberarAcesso, revogarAcesso } from '../portal/servico.ts';
 import { enfileirar } from '../whatsapp/envio.ts';
 import {
   avisarMudanca, candidatoVisivel, decifrarSeguro, ETAPAS, formatarTelefone, mascararCpf, mascararTelefone,
-  recalcularLinhaDoTempo, registrarEvento,
+  alterarStatusCandidato, alterarTagCandidato,
 } from './service.ts';
 
 /** Central de RH › candidatos. Tudo filtrado pelas unidades que a pessoa enxerga. */
@@ -242,21 +242,10 @@ candidatosRouter.post('/:id/status', exigirPermissao('status.alterar'), h(async 
   const id = parse(uuid, req.params.id);
   const body = parse(z.object({ statusId: uuid, motivo: z.string().trim().max(255).optional() }), req.body);
   await transaction(async (db) => {
-    const c = await candidatoVisivel(req.usuario!, id, db, true);
-    if (c.status_id === body.statusId) return;
-    const s = await db.query<{ nome: string }>('SELECT nome FROM status WHERE id = $1 AND ativo', [body.statusId]);
-    if (!s.rowCount) throw badRequest('Status não encontrado.');
-    await db.query('UPDATE candidatos SET status_id = $2 WHERE id = $1', [id, body.statusId]);
-    const a = autor(req);
-    await db.query(
-      `INSERT INTO status_historico (candidato_id, status_anterior_id, status_novo_id, autor_tipo, autor_usuario_id, autor_nome, motivo)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-      [id, c.status_id, body.statusId, a.tipo, a.id, a.nome, body.motivo ?? null],
-    );
-    await recalcularLinhaDoTempo(db, id, body.statusId);
-    await registrarEvento(db, 'candidato.status_alterado', id, { de: c.status_id, para: body.statusId, autor: a });
-    await auditarReq(req, { acao: 'candidato.status_alterado', resultado: 'sucesso', item: { tipo: 'candidato', id, nome: c.codigo }, detalhes: { de: c.status_nome, para: s.rows[0].nome, motivo: body.motivo } }, db);
-    await avisarMudanca(db, id, c.unidade_id);
+    await candidatoVisivel(req.usuario!, id, db, true);
+    const r = await alterarStatusCandidato(db, id, body.statusId, autor(req), body.motivo);
+    if (!r) return;
+    await auditarReq(req, { acao: 'candidato.status_alterado', resultado: 'sucesso', item: { tipo: 'candidato', id, nome: r.codigo }, detalhes: { de: r.de, para: r.para, motivo: body.motivo } }, db);
   });
   res.json({ ok: true });
 }));
@@ -267,21 +256,10 @@ for (const acao of ['adicionar', 'remover'] as const) {
     const id = parse(uuid, req.params.id);
     const { tagId } = parse(z.object({ tagId: uuid }), req.body);
     await transaction(async (db) => {
-      const c = await candidatoVisivel(req.usuario!, id, db, true);
-      const t = await db.query<{ nome: string }>('SELECT nome FROM tags WHERE id = $1 AND ativa', [tagId]);
-      if (!t.rowCount) throw badRequest('Tag não encontrada.');
-      const r = acao === 'adicionar'
-        ? await db.query('INSERT INTO candidato_tags (candidato_id, tag_id, adicionada_por) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING', [id, tagId, req.usuario!.id])
-        : await db.query('DELETE FROM candidato_tags WHERE candidato_id = $1 AND tag_id = $2', [id, tagId]);
-      if (!r.rowCount) return; // já estava assim
-      const a = autor(req);
-      await db.query(
-        `INSERT INTO tags_historico (candidato_id, tag_id, acao, autor_tipo, autor_usuario_id, autor_nome) VALUES ($1, $2, $3, $4, $5, $6)`,
-        [id, tagId, acao === 'adicionar' ? 'adicionada' : 'removida', a.tipo, a.id, a.nome],
-      );
-      await registrarEvento(db, acao === 'adicionar' ? 'candidato.tag_adicionada' : 'candidato.tag_removida', id, { tagId, autor: a });
-      await auditarReq(req, { acao: acao === 'adicionar' ? 'candidato.tag_adicionada' : 'candidato.tag_removida', resultado: 'sucesso', item: { tipo: 'candidato', id, nome: c.codigo }, detalhes: { tag: t.rows[0].nome } }, db);
-      await avisarMudanca(db, id, c.unidade_id);
+      await candidatoVisivel(req.usuario!, id, db, true);
+      const r = await alterarTagCandidato(db, id, tagId, acao, autor(req));
+      if (!r) return; // já estava assim
+      await auditarReq(req, { acao: acao === 'adicionar' ? 'candidato.tag_adicionada' : 'candidato.tag_removida', resultado: 'sucesso', item: { tipo: 'candidato', id, nome: r.codigo }, detalhes: { tag: r.tag } }, db);
     });
     res.json({ ok: true });
   }));

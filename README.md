@@ -17,11 +17,12 @@ Desenvolvido por **Marcos Monteiro (TI - Tecnologia da Informação da Hummm! Pi
 | 5. Portal temporário do candidato | ✅ concluída |
 | 6. Agendamento de entrevistas | ✅ concluída |
 | 7A. WhatsApp: servidor (Meta oficial ou Evolution API) | ✅ concluída |
-| **7B. WhatsApp: telas** | 🔄 este PR |
-| 8. Automações e construtor visual | próxima |
+| 7B. WhatsApp: telas | ✅ concluída |
+| **8A. Automações: motor** (servidor) | 🔄 este PR |
+| 8B. Automações: construtor visual e telas | próxima |
 | 3 a 9 | veja o [plano](docs/PLANO.md) |
 
-Documentos: [Plano](docs/PLANO.md) · [Arquitetura](docs/ARQUITETURA.md) · [Modelo de dados](docs/MODELO-DE-DADOS.md) · [Telas](docs/TELAS.md) · [Decisões](docs/DECISOES.md) · [API da base](docs/API-BASE.md) · [Roteiro de testes](docs/ROTEIRO-DE-TESTES.md) · [WhatsApp](docs/WHATSAPP.md)
+Documentos: [Plano](docs/PLANO.md) · [Arquitetura](docs/ARQUITETURA.md) · [Modelo de dados](docs/MODELO-DE-DADOS.md) · [Telas](docs/TELAS.md) · [Decisões](docs/DECISOES.md) · [API da base](docs/API-BASE.md) · [Roteiro de testes](docs/ROTEIRO-DE-TESTES.md) · [WhatsApp](docs/WHATSAPP.md) · [Automações](docs/AUTOMACOES.md)
 
 ## Tecnologia
 
