@@ -9,6 +9,8 @@ import { Portal } from './pages/portal/Portal';
 import { Candidatos } from './pages/central/Candidatos';
 import { Configuracoes } from './pages/central/Configuracoes';
 import { Conversas } from './pages/central/Conversas';
+import { Automacoes } from './pages/automacoes/Automacoes';
+import { EditorAutomacao } from './pages/automacoes/Editor';
 import { Entrevistas } from './pages/entrevistas/Entrevistas';
 import { DefinirSenha, TelaBloqueada, TrocarSenhaObrigatoria } from './pages/acesso/Senhas';
 import { Administracao } from './pages/administracao/Administracao';
@@ -65,6 +67,8 @@ function Rotas() {
           <Route path="/conversas" element={<Conversas />} />
           <Route path="/candidatos" element={<Candidatos />} />
           <Route path="/entrevistas" element={<Entrevistas />} />
+          <Route path="/automacoes" element={<Automacoes />} />
+          <Route path="/automacoes/:id" element={<EditorAutomacao />} />
           <Route path="/configuracoes" element={<Configuracoes />} />
           <Route path="/administracao" element={<Administracao />} />
           <Route path="/dispositivos" element={<Dispositivos />} />

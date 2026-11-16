@@ -469,6 +469,71 @@ function ehAnterior(f: Fluxo, a: string, b: string): boolean {
   return false;
 }
 
+
+// ── Disposição dos cards (usada pelo botão "Organizar" e pelo modelo) ───────
+/** Tamanho fixo dos cards na área: deixa as ligações previsíveis (entrada no topo, saídas embaixo). */
+export const LARGURA = 248;
+export const ALTURA = 92;
+const ESPACO_X = 72;
+const ESPACO_Y = 92;
+
+/**
+ * Organizar: camadas de cima para baixo, pela maior distância a partir do gatilho.
+ * Cards soltos vão para uma coluna à direita. Dentro da camada, segue a ordem das saídas do pai.
+ */
+export function organizar(f: Fluxo): Fluxo {
+  const filhos = new Map<string, string[]>();
+  for (const n of f.nos) filhos.set(n.id, []);
+  for (const n of f.nos) {
+    const ordem = (CARD[n.tipo]?.saidas ?? []).map((s) => s.id);
+    const ls = f.ligacoes.filter((l) => l.de === n.id).sort((a, b) => ordem.indexOf(a.saida) - ordem.indexOf(b.saida));
+    filhos.set(n.id, ls.map((l) => l.para));
+  }
+  const g = f.nos.find((n) => CARD[n.tipo]?.categoria === 'gatilho');
+  const nivel = new Map<string, number>();
+  if (g) {
+    // maior caminho (o fluxo é sem ciclos; o limite evita travar se houver um)
+    nivel.set(g.id, 0);
+    for (let volta = 0; volta < f.nos.length; volta++) {
+      let mudou = false;
+      for (const [id, n] of nivel) {
+        for (const c of filhos.get(id) ?? []) {
+          if ((nivel.get(c) ?? -1) < n + 1) {
+            nivel.set(c, n + 1);
+            mudou = true;
+          }
+        }
+      }
+      if (!mudou) break;
+    }
+  }
+  // ordem horizontal: percorre em profundidade a partir do gatilho
+  const ordemX = new Map<string, number>();
+  let contador = 0;
+  const visitar = (id: string) => {
+    if (ordemX.has(id)) return;
+    ordemX.set(id, contador++);
+    for (const c of filhos.get(id) ?? []) visitar(c);
+  };
+  if (g) visitar(g.id);
+
+  const camadas = new Map<number, string[]>();
+  for (const [id, n] of nivel) camadas.set(n, [...(camadas.get(n) ?? []), id]);
+  const pos = new Map<string, { x: number; y: number }>();
+  let maiorLargura = 0;
+  for (const ids of camadas.values()) maiorLargura = Math.max(maiorLargura, ids.length);
+  for (const [n, ids] of camadas) {
+    ids.sort((a, b) => (ordemX.get(a) ?? 0) - (ordemX.get(b) ?? 0));
+    const deslocamento = ((maiorLargura - ids.length) * (LARGURA + ESPACO_X)) / 2;
+    ids.forEach((id, i) => pos.set(id, { x: deslocamento + i * (LARGURA + ESPACO_X), y: n * (ALTURA + ESPACO_Y) }));
+  }
+  const soltos = f.nos.filter((n) => !pos.has(n.id));
+  const xSoltos = maiorLargura * (LARGURA + ESPACO_X) + ESPACO_X;
+  soltos.forEach((n, i) => pos.set(n.id, { x: xSoltos, y: i * (ALTURA + 32) }));
+  return { ...f, nos: f.nos.map((n) => ({ ...n, posicao: pos.get(n.id)! })) };
+}
+
+
 /**
  * Fluxo de referência (seção 9.4 do prompt): vem como modelo, nunca ativo.
  * Status e tags ficam em branco de propósito: a gestora escolhe ao duplicar (a validação aponta).
@@ -543,5 +608,5 @@ export function fluxoDeReferencia(): Fluxo {
   liga('nao_confirmar', 'proximo', 'nao_avisar');
   liga('outra_msg', 'proximo', 'outra_repetir');
   liga('outra_repetir', 'esgotou', 'outra_avisar');
-  return { nos, ligacoes };
+  return organizar({ nos, ligacoes });
 }

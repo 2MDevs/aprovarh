@@ -1,5 +1,5 @@
 import {
-  Bell, Building2, CalendarDays, LogOut, Menu, MessagesSquare, Monitor, Moon, Plug, ScrollText, Server, Settings2, Smartphone, Sun, UserRound, Users, X,
+  Bell, Building2, CalendarDays, LogOut, Menu, MessagesSquare, Monitor, Moon, Plug, ScrollText, Server, Settings2, Smartphone, Sun, UserRound, Users, Workflow, X,
 } from 'lucide-react';
 import { useEffect, useState, type ReactNode } from 'react';
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
@@ -19,12 +19,13 @@ interface ItemMenu {
   somenteDesenvolvedor?: boolean;
 }
 
-/** Só aparecem as telas que já existem e que a pessoa pode usar. Visão geral e Automações entram nas próximas etapas. */
+/** Só aparecem as telas que já existem e que a pessoa pode usar. A Visão geral entra na etapa 9. */
 export const MENU: ItemMenu[] = [
   // Central de RH
   { rota: '/conversas', rotulo: 'Conversas', icone: <MessagesSquare className="size-5" />, permissao: 'candidatos.ver' },
   { rota: '/candidatos', rotulo: 'Candidatos', icone: <Users className="size-5" />, permissao: 'candidatos.ver' },
   { rota: '/entrevistas', rotulo: 'Entrevistas', icone: <CalendarDays className="size-5" />, permissao: 'candidatos.ver' },
+  { rota: '/automacoes', rotulo: 'Automações', icone: <Workflow className="size-5" />, permissao: 'automacoes.ver' },
   { rota: '/configuracoes', rotulo: 'Configurações', icone: <Settings2 className="size-5" />, permissao: 'candidatos.ver' },
   // Administração
   { rota: '/administracao', rotulo: 'Usuários e unidades', icone: <Building2 className="size-5" />, permissao: ['usuarios.gerenciar', 'unidades.gerenciar'] },
@@ -52,7 +53,7 @@ export function Layout() {
   useEffect(() => setAberto(false), [local.pathname]);
   const u = sessao!.usuario!;
   // Conversas ocupa a altura toda da tela (lista, conversa e perfil com rolagem própria).
-  const telaCheia = local.pathname.startsWith('/conversas');
+  const telaCheia = local.pathname.startsWith('/conversas') || /^\/automacoes\/[^/]+/.test(local.pathname); // conversa e construtor ocupam a tela toda
 
   const lateral = (
     <nav aria-label="Menu principal" className="flex h-full flex-col bg-grafite text-creme">
