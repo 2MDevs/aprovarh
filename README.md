@@ -19,8 +19,9 @@ Desenvolvido por **Marcos Monteiro (TI - Tecnologia da Informação da Hummm! Pi
 | 7A. WhatsApp: servidor (Meta oficial ou Evolution API) | ✅ concluída |
 | 7B. WhatsApp: telas | ✅ concluída |
 | 8A. Automações: motor (servidor) | ✅ concluída |
-| **8B. Automações: construtor visual e telas** | 🔄 este PR |
-| 9. Visão geral, relatórios em PDF, manual e testes finais | próxima |
+| 8B. Automações: construtor visual e telas | ✅ concluída |
+| **9A. Visão geral (dashboard)** | 🔄 este PR |
+| 9B. Documentação e Cronograma em PDF, manual rápido e checklist final | próxima |
 | 3 a 9 | veja o [plano](docs/PLANO.md) |
 
 Documentos: [Plano](docs/PLANO.md) · [Arquitetura](docs/ARQUITETURA.md) · [Modelo de dados](docs/MODELO-DE-DADOS.md) · [Telas](docs/TELAS.md) · [Decisões](docs/DECISOES.md) · [API da base](docs/API-BASE.md) · [Roteiro de testes](docs/ROTEIRO-DE-TESTES.md) · [WhatsApp](docs/WHATSAPP.md) · [Automações](docs/AUTOMACOES.md)

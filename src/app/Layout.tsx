@@ -1,5 +1,5 @@
 import {
-  Bell, Building2, CalendarDays, LogOut, Menu, MessagesSquare, Monitor, Moon, Plug, ScrollText, Server, Settings2, Smartphone, Sun, UserRound, Users, Workflow, X,
+  Bell, Building2, LayoutDashboard, CalendarDays, LogOut, Menu, MessagesSquare, Monitor, Moon, Plug, ScrollText, Server, Settings2, Smartphone, Sun, UserRound, Users, Workflow, X,
 } from 'lucide-react';
 import { useEffect, useState, type ReactNode } from 'react';
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
@@ -19,9 +19,10 @@ interface ItemMenu {
   somenteDesenvolvedor?: boolean;
 }
 
-/** Só aparecem as telas que já existem e que a pessoa pode usar. A Visão geral entra na etapa 9. */
+/** Só aparecem as telas que a pessoa pode usar. A primeira da lista é a tela inicial. */
 export const MENU: ItemMenu[] = [
   // Central de RH
+  { rota: '/visao-geral', rotulo: 'Visão geral', icone: <LayoutDashboard className="size-5" />, permissao: 'dashboard.ver' },
   { rota: '/conversas', rotulo: 'Conversas', icone: <MessagesSquare className="size-5" />, permissao: 'candidatos.ver' },
   { rota: '/candidatos', rotulo: 'Candidatos', icone: <Users className="size-5" />, permissao: 'candidatos.ver' },
   { rota: '/entrevistas', rotulo: 'Entrevistas', icone: <CalendarDays className="size-5" />, permissao: 'candidatos.ver' },

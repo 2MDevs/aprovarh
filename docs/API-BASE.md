@@ -156,3 +156,9 @@ Todas pedem `automacoes.ver`. Editar pede `automacoes.editar`; publicar, ativar,
 | GET | `/api/automacoes/execucoes/:execId` | Passos, espera atual, erro |
 | POST | `/api/automacoes/execucoes/:execId/interromper` · `/reprocessar` | Parar · continuar do passo que falhou |
 | GET | `/api/automacoes/candidato/:candidatoId` | Execuções de um candidato |
+
+## Visão geral (etapa 9A)
+
+| Método | Rota | O que faz |
+|---|---|---|
+| GET | `/api/painel?dias=1\|7\|30\|90&unidadeId=` | Indicadores, entrevistas por situação, próximas entrevistas, série diária, por unidade e por status (`dashboard.ver`, escopo de unidade) |

@@ -236,3 +236,21 @@ As telas chegam na 8B. Até lá, teste pela API ou pelo terminal.
 9. **Pausar e ativar** pela lista e pelo construtor.
 10. **Permissões:** quem só tem `automacoes.ver` vê o fluxo, mas não arrasta, não liga e não publica.
 11. **Celular:** a biblioteca abre pelo botão, a área se move com o dedo e o zoom funciona pelos botões.
+
+## Etapa 9A: visão geral
+
+1. **Tela inicial:** quem tem "Ver a visão geral" entra direto nela. O item aparece em primeiro no menu.
+2. **Conferir os números:** compare com Candidatos e Entrevistas.
+   - O total bate com a lista sem filtro.
+   - "Aguardando entrevista", "Pré-aprovados", "Aprovados" e "Reprovados" batem com o filtro por status.
+   - "Entrevistas agendadas" é a soma das três situações da caixa "Entrevistas".
+3. **Período:** troque entre Hoje, 7, 30 e 90 dias. Só "Novas candidaturas" e o gráfico mudam.
+4. **Unidade:** escolha uma unidade e veja todos os números mudarem.
+   - Uma gestora de uma unidade só vê os números dela.
+   - Pedir outra unidade pela API responde 403.
+5. **Tempo real:** envie uma candidatura pelo formulário com a visão geral aberta. Em alguns segundos, "Total" e "Novas" sobem.
+6. **Atenção:**
+   - Escreva como candidato pelo portal: "Aguardando resposta" e "Não lidas" sobem.
+   - Responda pela Central: "Aguardando resposta" desce.
+7. **Automação com erro:** o cartão fica vermelho e leva para Automações.
+8. **Celular e tema escuro:** os cartões ficam em coluna, e o gráfico continua legível.
