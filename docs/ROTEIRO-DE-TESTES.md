@@ -254,3 +254,13 @@ As telas chegam na 8B. Até lá, teste pela API ou pelo terminal.
    - Responda pela Central: "Aguardando resposta" desce.
 7. **Automação com erro:** o cartão fica vermelho e leva para Automações.
 8. **Celular e tema escuro:** os cartões ficam em coluna, e o gráfico continua legível.
+
+## Etapa 9B: entregas finais
+
+1. Em **Sistema › Artefatos da plataforma** aparecem:
+   - os dois PDFs (Documentação do Projeto e Cronograma e Custos);
+   - o manual rápido e o checklist final.
+
+   Abra e baixe cada um. As visualizações e os downloads ficam na Auditoria.
+2. Conclua uma execução de automação: em Auditoria aparece "automacao.execucao_concluida".
+3. Para os testes com a equipe, use o checklist impresso da seção 05 do **Cronograma e Custos**.
