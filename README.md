@@ -139,7 +139,7 @@ Para conferir o motor de automações sem banco: `npm run test:automacoes`.
 | `DEVELOPER_EMAILS` | não | vazio | E-mails com perfil Desenvolvedor |
 | `ADMIN_EMAIL` / `ADMIN_INITIAL_PASSWORD` | não | — | Administrador inicial (criado uma única vez) |
 | `SESSION_TTL_HOURS` | não | `8` | Validade da sessão, renovada a cada uso (tela) |
-| `LOCK_IDLE_MINUTES` | não | `10` | Minutos sem uso para bloquear a tela (tela) |
+| `LOCK_IDLE_MINUTES` | não | `30` | Minutos sem uso para bloquear a tela (tela) |
 | `PIN_MAX_ATTEMPTS` | não | `5` | Erros de PIN/senha no desbloqueio antes de encerrar a sessão (tela) |
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` | não | porta `587`, seguro `false` | E-mail (tela) |
 | `STORAGE_DIR` | não | `./storage` | Arquivos cifrados (faça backup desta pasta junto com o banco) |

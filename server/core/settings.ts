@@ -27,7 +27,7 @@ export const DEFINICOES = {
   'smtp.remetente': { grupo: 'smtp', rotulo: 'Remetente', tipo: 'texto', env: 'SMTP_FROM' },
 
   'seguranca.sessao_horas': { grupo: 'seguranca', rotulo: 'Validade da sessão (horas)', tipo: 'numero', env: 'SESSION_TTL_HOURS', padrao: '8', min: 1, max: 72 },
-  'seguranca.bloqueio_minutos': { grupo: 'seguranca', rotulo: 'Minutos sem uso para bloquear a tela', tipo: 'numero', env: 'LOCK_IDLE_MINUTES', padrao: '10', min: 1, max: 240 },
+  'seguranca.bloqueio_minutos': { grupo: 'seguranca', rotulo: 'Minutos sem uso para bloquear a tela', tipo: 'numero', env: 'LOCK_IDLE_MINUTES', padrao: '30', min: 1, max: 240 },
   'seguranca.pin_tentativas': { grupo: 'seguranca', rotulo: 'Tentativas de PIN antes de encerrar a sessão', tipo: 'numero', env: 'PIN_MAX_ATTEMPTS', padrao: '5', min: 1, max: 20 },
 
   // Cadastro público (etapa 3). Valores iniciais propostos na decisão D15.
