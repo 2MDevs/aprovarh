@@ -142,6 +142,7 @@ portalRouter.get('/mensagens', h(async (req, res) => {
     `SELECT m.id, m.sentido, m.canal, m.autor_tipo, m.texto, m.arquivo_id, m.criado_em, a.nome_original, a.tipo_mime, a.tamanho
        FROM mensagens m LEFT JOIN arquivos a ON a.id = m.arquivo_id
       WHERE m.conversa_id = $1 AND m.visivel_ao_candidato
+        AND m.canal <> 'whatsapp' -- o que foi conversado pelo WhatsApp (inclusive com o robô) fica só na Central (D43)
       ORDER BY m.criado_em DESC LIMIT 200`,
     [cid],
   );
