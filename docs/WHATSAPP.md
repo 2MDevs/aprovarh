@@ -1,5 +1,14 @@
 # aprovaRH: integração com o WhatsApp
 
+> **Atualização (decisão D40):** por enquanto o aprovaRH usa **somente a Evolution API**. A opção Meta saiu das telas (o código ficou desligado).
+>
+> **Como ligar:**
+> 1. Em **Integração › WhatsApp** (TI), preencha o endereço da Evolution (https://..., ou `http://127.0.0.1:porta` se ela estiver na mesma VPS), o nome da instância e a chave (apikey). Use a chave global da Evolution se quiser que o aprovaRH crie a instância sozinho.
+> 2. Abra **Conexão do WhatsApp** no menu e clique em **Conectar**. O aprovaRH cria a instância (se não existir), configura o webhook dela com um token secreto e mostra o **QR Code**.
+> 3. No celular do número do recrutamento: WhatsApp › Aparelhos conectados › Conectar um aparelho, e leia o QR Code. A tela muda para **Conectado** sozinha.
+>
+> O texto abaixo descreve os dois provedores, como eram antes da D40.
+
 O aprovaRH fala com o WhatsApp por **um de dois provedores**, escolhido em Integração › WhatsApp (ou `WHATSAPP_PROVIDER` no `.env`):
 
 | | **Meta (Cloud API oficial)** | **Evolution API** |

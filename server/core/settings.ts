@@ -36,16 +36,16 @@ export const DEFINICOES = {
 
   // Aviso de privacidade (LGPD) mostrado no formulário. Sem ele, o cadastro público fica fechado.
   'privacidade.aviso': { grupo: 'privacidade', rotulo: 'Texto do aviso de privacidade', tipo: 'textoLongo' },
-  // WhatsApp: provedor "meta" (Cloud API oficial) ou "evolution" (Evolution API, instância do WhatsApp Web). Número: A definir.
-  'whatsapp.provedor': { grupo: 'whatsapp', rotulo: 'Provedor (meta ou evolution)', tipo: 'texto', env: 'WHATSAPP_PROVIDER', padrao: 'meta' },
-  'whatsapp.evolution_url': { grupo: 'whatsapp', rotulo: 'Evolution: endereço do servidor (https://...)', tipo: 'texto', env: 'EVOLUTION_URL' },
+  // WhatsApp: por enquanto só a Evolution API, instância do WhatsApp Web conectada por QR Code (decisão D40). Número: A definir.
+  'whatsapp.evolution_url': { grupo: 'whatsapp', rotulo: 'Evolution: endereço do servidor (https://... ou, na mesma VPS, http://127.0.0.1:porta)', tipo: 'texto', env: 'EVOLUTION_URL' },
   'whatsapp.evolution_instancia': { grupo: 'whatsapp', rotulo: 'Evolution: nome da instância', tipo: 'texto', env: 'EVOLUTION_INSTANCE' },
   'whatsapp.evolution_apikey': { grupo: 'whatsapp', rotulo: 'Evolution: chave da API (apikey)', tipo: 'segredo', env: 'EVOLUTION_APIKEY' },
-  'whatsapp.evolution_webhook_token': { grupo: 'whatsapp', rotulo: 'Evolution: token do webhook (cabeçalho x-aprovarh-token)', tipo: 'segredo', env: 'EVOLUTION_WEBHOOK_TOKEN' },
+  'whatsapp.evolution_webhook_token': { grupo: 'whatsapp', rotulo: 'Evolution: token do webhook (criado sozinho ao conectar)', tipo: 'segredo', env: 'EVOLUTION_WEBHOOK_TOKEN' },
   'whatsapp.texto_codigo': { grupo: 'whatsapp', rotulo: 'Evolution: texto do código de acesso ({nome}, {codigo}, {link})', tipo: 'textoLongo',
     padrao: 'Olá, {nome}! Para acompanhar sua candidatura na Hummm! Pizzas, acesse {link} e use o código {codigo}. Ele vale até as 23h59 de hoje.' },
   'whatsapp.texto_entrevista': { grupo: 'whatsapp', rotulo: 'Evolution: texto de confirmação de entrevista ({data}, {horario})', tipo: 'textoLongo',
     padrao: 'Olá! Sua entrevista foi agendada para o dia {data}, às {horario}.\n\nVocê estaria disponível nessa data?\n\nResponda SIM ou NÃO.' },
+  // Meta (Cloud API oficial): desligada por enquanto (D40). As chaves ficam para reativar no futuro.
   'whatsapp.phone_number_id': { grupo: 'whatsapp', rotulo: 'Meta: ID do número (Phone Number ID)', tipo: 'texto', env: 'WHATSAPP_PHONE_NUMBER_ID' },
   'whatsapp.waba_id': { grupo: 'whatsapp', rotulo: 'Meta: ID da conta WhatsApp Business (WABA ID)', tipo: 'texto', env: 'WHATSAPP_WABA_ID' },
   'whatsapp.token': { grupo: 'whatsapp', rotulo: 'Meta: Token de acesso permanente (usuário do sistema)', tipo: 'segredo', env: 'WHATSAPP_TOKEN' },

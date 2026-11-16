@@ -143,7 +143,7 @@ Para conferir o motor de automações sem banco: `npm run test:automacoes`.
 | `PIN_MAX_ATTEMPTS` | não | `5` | Erros de PIN/senha no desbloqueio antes de encerrar a sessão (tela) |
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` | não | porta `587`, seguro `false` | E-mail (tela) |
 | `STORAGE_DIR` | não | `./storage` | Arquivos cifrados (faça backup desta pasta junto com o banco) |
-| `WHATSAPP_PROVIDER` e demais `WHATSAPP_*` / `EVOLUTION_*` | não | provedor `meta` | WhatsApp (tela). Ver [docs/WHATSAPP.md](docs/WHATSAPP.md) |
+| `EVOLUTION_URL`, `EVOLUTION_INSTANCE`, `EVOLUTION_APIKEY` | não | — | WhatsApp pela Evolution API (tela). O token do webhook (`EVOLUTION_WEBHOOK_TOKEN`) é criado sozinho ao conectar. Ver [docs/WHATSAPP.md](docs/WHATSAPP.md) |
 | `CURRICULO_MAX_MB` / `FOTO_MAX_MB` | não | `10` / `5` | Tamanho máximo dos arquivos do candidato (tela) |
 | `TRUST_PROXY` | não | `1` | Proxies na frente do Node, para o IP real |
 
