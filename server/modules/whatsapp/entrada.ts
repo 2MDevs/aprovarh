@@ -118,7 +118,16 @@ async function processarMensagem(db: PoolClient, e: Extract<EventoEntrada, { tip
   await auditar({ acao: 'mensagem.recebida', resultado: 'sucesso', item: { tipo: 'candidato', id: cand.id, nome: cand.codigo }, detalhes: { canal: 'whatsapp', mensagemId: m.rows[0].id }, ator: { usuarioNome: `Candidato ${cand.nome} (WhatsApp)` } }, db);
   await publicar(db, { tipo: 'mensagem.nova', candidatoId: cand.id, unidadeId: cand.unidade_id });
   // Respostas da entrevista (SIM / NÃO / data), se estiverem ligadas e nenhuma automação estiver esperando a resposta.
-  if (!(await automacaoCuidaDasRespostas(db, cand.id))) await tratarResposta(db, cand.id, e.texto);
+  // Se a resposta automática falhar, a mensagem do candidato continua registrada (a falha vai para a Auditoria).
+  await db.query('SAVEPOINT resposta_automatica');
+  try {
+    if (!(await automacaoCuidaDasRespostas(db, cand.id))) await tratarResposta(db, cand.id, e.texto);
+    await db.query('RELEASE SAVEPOINT resposta_automatica');
+  } catch (err) {
+    await db.query('ROLLBACK TO SAVEPOINT resposta_automatica');
+    console.error('[whatsapp] resposta automática falhou', (err as Error).message);
+    await auditar({ acao: 'whatsapp.resposta_automatica_falhou', resultado: 'falha', item: { tipo: 'candidato', id: cand.id, nome: cand.codigo }, detalhes: { erro: (err as Error).message.slice(0, 300) }, ator: { usuarioNome: 'Sistema' } }, db);
+  }
 }
 
 /** Rotina do Worker: processa os eventos guardados, um por transação. */
@@ -146,7 +155,7 @@ export async function processarEntradas(): Promise<number> {
       console.error('[whatsapp] falha ao processar evento', ev.id, (err as Error).message);
       // Depois de 5 tentativas, sai da fila (fica guardado com o erro para análise).
       await pool.query(
-        `UPDATE whatsapp_eventos_entrada SET tentativas = $2, erro = $3, processado_em = CASE WHEN $2 >= 5 THEN now() ELSE NULL END WHERE id = $1`,
+        `UPDATE whatsapp_eventos_entrada SET tentativas = $2::int, erro = $3, processado_em = CASE WHEN $2::int >= 5 THEN now() ELSE NULL END WHERE id = $1`,
         [ev.id, tentativas, (err as Error).message.slice(0, 500)],
       );
       if (tentativas < 5) break; // tenta de novo na próxima rodada

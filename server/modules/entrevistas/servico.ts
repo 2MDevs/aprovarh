@@ -171,8 +171,8 @@ export async function mudarSituacao(db: PoolClient, entrevistaId: string, acao: 
   if (!regra.de.includes(e.situacao)) throw conflict('A entrevista não está numa situação que permita isso.');
   const encerra = ['cancelada', 'realizada', 'nao_compareceu'].includes(regra.para);
   await db.query(
-    `UPDATE entrevistas SET situacao = $2, motivo = COALESCE($3, motivo),
-        confirmada_em = CASE WHEN $2 = 'confirmada' THEN now() ELSE confirmada_em END,
+    `UPDATE entrevistas SET situacao = $2::text, motivo = COALESCE($3, motivo),
+        confirmada_em = CASE WHEN $2::text = 'confirmada' THEN now() ELSE confirmada_em END,
         encerrada_em = CASE WHEN $4 THEN now() ELSE encerrada_em END WHERE id = $1`,
     [entrevistaId, regra.para, motivo ?? null, encerra],
   );
