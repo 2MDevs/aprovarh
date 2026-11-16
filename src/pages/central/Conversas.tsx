@@ -1,4 +1,4 @@
-import { MessageSquareText } from 'lucide-react';
+import { MessageSquareText, UserRoundX } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useSessao } from '../../app/sessao';
@@ -7,6 +7,7 @@ import { useEventos } from '../../lib/eventos';
 import { useDados } from '../../lib/useDados';
 import { Chat } from './Chat';
 import { Foto, horaCurta, Pilula } from './comum';
+import { NaoIdentificados } from './NaoIdentificados';
 import { Filtros, FILTRO_VAZIO, queryFiltros, type ValoresFiltro } from './Filtros';
 import { PerfilCandidato } from './PerfilCandidato';
 import type { CandidatoLista, PaginaCandidatos } from './tipos';
@@ -16,7 +17,8 @@ import type { CandidatoLista, PaginaCandidatos } from './tipos';
  * No celular: lista → conversa em tela cheia → perfil por cima.
  */
 export function Conversas() {
-  const { pode } = useSessao();
+  const { pode, sessao } = useSessao();
+  const [naoIdentificados, setNaoIdentificados] = useState(false);
   const [params, setParams] = useSearchParams();
   const [filtro, setFiltro] = useState<ValoresFiltro>(FILTRO_VAZIO);
   const [porPagina, setPorPagina] = useState(40);
@@ -56,7 +58,15 @@ export function Conversas() {
       {/* Lista */}
       <section className={`flex w-full flex-col border-r border-borda bg-superficie md:w-[340px] lg:w-[380px] ${selecionado ? 'hidden md:flex' : 'flex'}`} aria-label="Candidatos">
         <div className="space-y-3 border-b border-borda p-3">
-          <h1 className="px-1 text-lg font-bold">Conversas</h1>
+          <div className="flex items-center justify-between gap-2 px-1">
+            <h1 className="text-lg font-bold">Conversas</h1>
+            {sessao?.usuario?.todasUnidades && (
+              <button onClick={() => setNaoIdentificados(true)} title="Contatos não identificados" aria-label="Contatos não identificados"
+                className="grid size-10 place-items-center rounded-full text-suave hover:bg-superficie-2 hover:text-texto">
+                <UserRoundX className="size-5" />
+              </button>
+            )}
+          </div>
           <Filtros valor={filtro} onChange={setFiltro} compacto />
         </div>
         <div className="flex-1 overflow-y-auto">
@@ -88,6 +98,8 @@ export function Conversas() {
           </div>
         )}
       </section>
+
+      {naoIdentificados && <NaoIdentificados onFechar={() => setNaoIdentificados(false)} />}
 
       {/* Perfil lateral */}
       {selecionado && perfilAberto && (

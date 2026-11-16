@@ -176,3 +176,21 @@ Antes: configure um dos provedores conforme [WHATSAPP.md](WHATSAPP.md). As telas
    - Responda algo confuso ("talvez"): ele pede esclarecimento.
 8. **Fila:** com o provedor desligado (por exemplo, a instância da Evolution desconectada), envie algo. Ele fica pendente e é tentado de novo. Depois do limite, aparece "Falhou" na conversa.
 9. **Sem duplicar:** reenvie o mesmo webhook (mesmo id de mensagem). A mensagem não aparece duas vezes.
+
+## Etapa 7B: WhatsApp (telas)
+
+1. **Integração › WhatsApp:** troque entre Meta e Evolution. Os campos mudam, e aparece o aviso de risco da Evolution. Salve e veja a situação e a lista do que falta.
+2. **Webhook:** o botão Copiar copia o endereço certo de cada provedor.
+3. **Modelos (Meta):** use "Sincronizar". Os modelos aprovados aparecem nas duas listas. Escolha um para o código e outro para a entrevista e salve.
+4. **Testar conexão:** a mensagem de sucesso ou o erro aparece no próprio modal.
+5. **Conversa:**
+   - Com o WhatsApp configurado, aparecem os botões Portal e WhatsApp.
+   - Escolha WhatsApp e envie. A mensagem aparece com um relógio e depois com os vistos de entrega.
+   - Na Meta, sem mensagem do candidato nas últimas 24 h, o campo fica bloqueado com a explicação.
+6. **Liberar acesso:**
+   - Com "Enviar pelo WhatsApp" ligado, a tela diz "Código enviado" e não mostra o código.
+   - Desligado, mostra o código como antes.
+7. **Agendar:** com "Enviar pelo WhatsApp" ligado, o aviso diz que a mensagem foi enviada, e o candidato recebe a pergunta SIM ou NÃO.
+8. **Contatos não identificados:**
+   - Entre com quem enxerga todas as unidades: o ícone aparece no topo de Conversas, e o contato desconhecido está lá. Arquivar tira ele da lista.
+   - Entre com uma gestora de uma unidade só: o ícone não aparece, e a rota responde 403.

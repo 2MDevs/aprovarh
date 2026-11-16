@@ -7,6 +7,7 @@ import { api, ApiError } from '../../lib/api';
 import { normalizar } from '../../lib/formato';
 import { useDados } from '../../lib/useDados';
 import { CORES } from './cores';
+import { ModalWhatsapp } from './ModalWhatsapp';
 import { ModalAdmin, ModalArquivos, ModalAtualizacao, ModalEnv, ModalPrivacidade, ModalSeguranca, ModalSmtp } from './Modais';
 
 export interface CardIntegracao { id: string; aba: 'geral' | 'integracoes'; sigla: string; nome: string; categoria: string; descricao: string; configurado: boolean }
@@ -148,6 +149,7 @@ function Telas({ onExpirou }: { onExpirou: () => void }) {
       {abrir === 'env' && <ModalEnv onFechar={fechar} onErro={aoErro} />}
       {abrir === 'smtp' && <ModalSmtp onFechar={fechar} onErro={aoErro} />}
       {abrir === 'privacidade' && <ModalPrivacidade onFechar={fechar} onErro={aoErro} />}
+      {abrir === 'whatsapp' && <ModalWhatsapp onFechar={fechar} onErro={aoErro} />}
       {abrir === 'arquivos' && <ModalArquivos onFechar={fechar} onErro={aoErro} />}
     </>
   );
