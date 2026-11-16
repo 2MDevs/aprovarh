@@ -8,6 +8,8 @@ import { useDados } from '../../lib/useDados';
 import { Foto, Pilula } from './comum';
 import { useOpcoesFiltro } from './Filtros';
 import { SecaoEntrevista } from '../entrevistas/SecaoEntrevista';
+import { SITUACAO_EXECUCAO } from '../automacoes/estilo';
+import { Link } from 'react-router-dom';
 import { ROTULO_ETAPA, ROTULO_SITUACAO, urlArquivo, type Perfil, type SituacaoEtapa } from './tipos';
 
 const TOM_ETAPA: Record<SituacaoEtapa, 'verde' | 'amarelo' | 'cinza'> = { concluida: 'verde', em_andamento: 'amarelo', aguardando: 'amarelo', nao_iniciada: 'cinza' };
@@ -136,6 +138,7 @@ export function PerfilCandidato({ candidatoId, versao, onFechar, onMudou }: { ca
       <SecaoEntrevista candidatoId={p.id} unidadeId={p.unidade.id} versao={versao} onMudou={() => { void recarregar(); onMudou(); }} Secao={Secao} />
 
       <AcessoPortal p={p} pode={pode('portal.liberar')} onMudou={() => { void recarregar(); onMudou(); }} />
+      {pode('automacoes.ver') && <AutomacoesDoCandidato candidatoId={p.id} versao={versao} />}
 
       <Secao titulo="Currículo e arquivos">
         {curriculo && pode('candidatos.curriculo.baixar') && (
@@ -397,6 +400,28 @@ function AcessoPortal({ p, pode, onMudou }: { p: Perfil; pode: boolean; onMudou:
             setOcupado(false);
           }
         }} />
+    </Secao>
+  );
+}
+
+/** Execuções de automação deste candidato (o que o chatbot fez e está fazendo). */
+function AutomacoesDoCandidato({ candidatoId, versao }: { candidatoId: string; versao: number }) {
+  const { dados, recarregar } = useDados<{ id: string; numero: number; situacao: string; iniciadaEm: string; automacao: { id: string; nome: string } }[]>(`/api/automacoes/candidato/${candidatoId}`);
+  useEffect(() => { void recarregar(); }, [versao, recarregar]);
+  if (!dados?.length) return null;
+  return (
+    <Secao titulo="Automações" recolhida>
+      <ul className="space-y-2 text-sm">
+        {dados.slice(0, 10).map((x) => {
+          const s = SITUACAO_EXECUCAO[x.situacao];
+          return (
+            <li key={x.id} className="flex items-center justify-between gap-2">
+              <Link to={`/automacoes/${x.automacao.id}?aba=execucoes&execucao=${x.id}`} className="min-w-0 truncate font-semibold underline-offset-2 hover:underline">{x.automacao.nome} <span className="font-normal text-suave">nº {x.numero}</span></Link>
+              <Selo tom={s?.tom}>{s?.rotulo ?? x.situacao}</Selo>
+            </li>
+          );
+        })}
+      </ul>
     </Secao>
   );
 }

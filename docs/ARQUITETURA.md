@@ -35,7 +35,7 @@
 
 | Camada | Escolha |
 |---|---|
-| Front | React + Vite + Tailwind CSS, React Router, TanStack Query; **React Flow (@xyflow/react, licença MIT)** para o construtor de automações; PWA (vite-plugin-pwa) |
+| Front | React + Vite + Tailwind CSS, React Router, TanStack Query; área do construtor de automações feita no próprio aprovaRH, sem React Flow (decisão D37); PWA (vite-plugin-pwa) |
 | Servidor | Node.js + Express, executado com tsx; Zod para validar entradas; helmet; express-rate-limit |
 | Banco | PostgreSQL, migrations SQL versionadas no repositório |
 | Senhas e códigos | bcrypt para senhas e PIN (padrão); HMAC-SHA-256 com chave do servidor para os códigos do portal (explicação na seção 6) |

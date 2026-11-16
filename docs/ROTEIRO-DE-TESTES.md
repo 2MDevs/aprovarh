@@ -216,3 +216,23 @@ As telas chegam na 8B. Até lá, teste pela API ou pelo terminal.
    - A execução fica "Com erro", a automação também, e o sino avisa.
    - `POST /execucoes/:id/interromper` encerra a execução.
 10. **Pausar:** pause a automação. Novos eventos não criam execuções, e as que existem ficam paradas até ativar de novo.
+
+## Etapa 8B: construtor visual e telas
+
+1. **Menu Automações:** clique em "Criar a partir do modelo". O construtor abre com o fluxo de referência organizado e o botão "2 problema(s)".
+2. **Validação:** clique no botão de problemas e em um item. A área vai até o card, e o painel mostra o que falta. Escolha o status e a tag: o botão vira "Pronto para publicar".
+3. **Montar:**
+   - Arraste "Adicionar tag" da biblioteca e mova o card.
+   - Puxe a bolinha de uma saída até ele.
+   - Tente ligar algo no gatilho: aparece o aviso e a ligação não é criada.
+   - Apague com Delete e desfaça com Ctrl+Z.
+4. **Salvar e sair:** feche a aba sem salvar. O navegador avisa. Volte, use "Salvar rascunho" e confirme que nada se perdeu.
+5. **Testar:** com a resposta "sim", o caminho vai até "Notificar gestora", com "nada foi enviado". Os cards do caminho ficam destacados, e nenhuma mensagem aparece em conversa nenhuma.
+6. **Publicar:** confirme. Aparece "Versão 1 publicada", a situação vira "Ativa" e a aba Versões mostra a v1.
+7. **Execuções:** com um candidato de teste autorizado, faça o gatilho acontecer.
+   - A execução aparece na aba Execuções e no perfil do candidato (seção Automações).
+   - Abra a execução e veja os passos. Teste "Interromper".
+8. **Erro:** numa execução "Com erro", o sino avisa e o link abre direto a execução. Teste "Reprocessar".
+9. **Pausar e ativar** pela lista e pelo construtor.
+10. **Permissões:** quem só tem `automacoes.ver` vê o fluxo, mas não arrasta, não liga e não publica.
+11. **Celular:** a biblioteca abre pelo botão, a área se move com o dedo e o zoom funciona pelos botões.

@@ -47,6 +47,27 @@
 - **Testar** abre um painel para preencher dados simulados (unidade, resposta SIM/NÃO, data proposta…) e mostra o caminho percorrido, passo a passo, com "nada foi enviado".
 - O **fluxo de referência** (Data da entrevista chegou → Gerar código → Enviar link e código → Confirmou presença? → ramos SIM/NÃO) vem como **modelo** para duplicar, nunca ativo.
 
+### Construtor (etapa 8B)
+
+- **Automações** (menu): cards com nome, descrição, situação, gatilho, execuções, última execução, quem criou e a última atualização.
+  - Ações: Editar, Histórico, Duplicar, Pausar ou Ativar, Excluir.
+  - Botões no topo: "Nova automação" e "Criar a partir do modelo".
+- **Construtor** (`/automacoes/:id`, tela cheia), com as abas Fluxo, Execuções e Versões.
+  - **Biblioteca:** busca e categorias com cor. Arraste o card ou clique nele. O gatilho fica bloqueado quando o fluxo já tem um.
+  - **Área de construção:**
+    - Mover a área: arrastar o fundo, ou a roda do mouse.
+    - Zoom: Ctrl + roda, ou os botões.
+    - Ver tudo, Organizar e minimapa.
+    - Ligar: puxe a bolinha de uma saída até o próximo card. Ligações proibidas (para o gatilho, em volta, no próprio card) avisam e não acontecem.
+  - **Configurações do card:** nome no fluxo, descrição, categoria, campos de cada card (com as variáveis para clicar), entradas e saídas, situação e erros. Botões Duplicar e Excluir.
+  - **Validação:** botão "N problema(s)". Clicar num item leva ao card, e o card com erro mostra um selo vermelho.
+  - **Barra:** Desfazer e Refazer (Ctrl+Z e Ctrl+Y), Salvar rascunho (Ctrl+S), Testar, Pausar ou Ativar, Publicar. Publicar fica bloqueado com erros e pede confirmação. Avisa ao sair sem salvar.
+  - **Testar:** candidato simulado (unidade, status, tags, entrevista, acesso, janela da Meta, respostas em ordem). Mostra o caminho passo a passo e como o candidato terminaria, e destaca o caminho na área.
+  - **Execuções:** filtro por situação, tabela e detalhe com a linha do tempo dos passos, a espera atual e o erro. Botões Reprocessar e Interromper, e link para a conversa.
+  - **Versões:** lista das publicadas; ver uma versão (somente leitura) e "Usar como rascunho".
+- **Perfil do candidato:** seção "Automações" com as execuções dele.
+- **Celular:** a biblioteca e as configurações abrem por cima da área, e os botões mostram só o ícone.
+
 ## 3. Fluxos principais
 
 **Candidato**
