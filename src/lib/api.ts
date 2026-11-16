@@ -17,7 +17,7 @@ export class ApiError extends Error {
 
 export const EVENTO_SESSAO = 'arh:sessao';
 
-async function requisicao<T>(metodo: string, url: string, corpo?: unknown): Promise<T> {
+async function requisicao<T>(metodo: string, url: string, corpo?: unknown, tentativa = 0): Promise<T> {
   let resp: Response;
   try {
     resp = await fetch(url, {
@@ -28,6 +28,12 @@ async function requisicao<T>(metodo: string, url: string, corpo?: unknown): Prom
     });
   } catch {
     throw new ApiError(0, 'Sem conexão com o servidor. Confira sua internet.', 'sem_conexao');
+  }
+  // Limite de requisições: nas leituras, espera o tempo pedido pelo servidor (até 8 s) e tenta mais uma vez.
+  if (resp.status === 429 && metodo === 'GET' && tentativa === 0) {
+    const espera = Math.min(8, Math.max(1, Number(resp.headers.get('retry-after')) || 2));
+    await new Promise((r) => setTimeout(r, espera * 1000));
+    return requisicao<T>(metodo, url, corpo, 1);
   }
   const tipo = resp.headers.get('content-type') || '';
   const dados = tipo.includes('application/json') ? await resp.json().catch(() => null) : null;

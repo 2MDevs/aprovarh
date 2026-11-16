@@ -46,6 +46,9 @@ export function Conversas() {
     setParams(p, { replace: !id });
   }, [params, setParams]);
 
+  const recarregarLista = lista.recarregar;
+  const aoLer = useCallback(() => void recarregarLista(), [recarregarLista]);
+
   useEffect(() => {
     if (!selecionado) setPerfilAberto(false);
   }, [selecionado]);
@@ -89,7 +92,7 @@ export function Conversas() {
       <section className={`min-w-0 flex-1 flex-col bg-fundo ${selecionado ? 'flex' : 'hidden md:flex'}`} aria-label="Conversa">
         {selecionado ? (
           <Chat key={selecionado} candidatoId={selecionado} versao={versaoChat} onVoltar={() => escolher(null)}
-            onAbrirPerfil={() => setPerfilAberto(true)} onLida={() => void lista.recarregar()} />
+            onAbrirPerfil={() => setPerfilAberto(true)} onLida={aoLer} />
         ) : (
           <div className="m-auto max-w-sm px-6 text-center text-suave">
             <MessageSquareText className="mx-auto size-12 text-amarelo-forte" aria-hidden />

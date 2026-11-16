@@ -12,7 +12,7 @@ export const limiteAutenticacao = rateLimit({
 /** Limite geral da API, para conter abusos sem atrapalhar o uso normal. */
 export const limiteGeral = rateLimit({
   windowMs: 60_000,
-  limit: 600,
+  limit: 1200, // por IP; um escritório inteiro costuma sair pelo mesmo IP
   standardHeaders: 'draft-7',
   legacyHeaders: false,
   message: { erro: 'Muitas requisições. Aguarde um instante.', codigo: 'muitas_requisicoes' },
