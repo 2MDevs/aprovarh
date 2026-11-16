@@ -28,6 +28,19 @@
 - **Agendar/remarcar entrevista:** opção "Enviar pelo WhatsApp" (ligada por padrão), com a pergunta SIM ou NÃO.
 - **Contatos não identificados:** ícone no topo da lista de Conversas, só para quem enxerga todas as unidades. Mostra nome do perfil, número, última mensagem; copiar número e arquivar.
 
+### Visão geral (etapa 9A)
+
+Primeira tela de quem tem `dashboard.ver`. Filtros de período (hoje, 7, 30 ou 90 dias) e de unidade.
+
+- **Pede atenção:** Aguardando resposta, Mensagens não lidas, Automações com erro. Cada um destaca quando é maior que zero e leva à tela certa.
+- **Indicadores:** total de candidatos, novas candidaturas no período, aguardando entrevista, entrevistas agendadas (daqui para frente), pré-aprovados, aprovados, reprovados, e as entrevistas por situação.
+- **Gráficos:**
+  - novas candidaturas por dia (dica ao passar o mouse; tabela para leitor de tela);
+  - candidatos por unidade (total e em andamento);
+  - candidatos por status.
+- **Próximas entrevistas:** as 6 próximas, com link para a conversa.
+- Os números se atualizam sozinhos (tempo real). Sem dados, aparece 0: nada é inventado.
+
 ## 2. Construtor de automações
 
 ```

@@ -10,6 +10,7 @@ import { Candidatos } from './pages/central/Candidatos';
 import { Configuracoes } from './pages/central/Configuracoes';
 import { Conversas } from './pages/central/Conversas';
 import { Automacoes } from './pages/automacoes/Automacoes';
+import { VisaoGeral } from './pages/painel/VisaoGeral';
 import { EditorAutomacao } from './pages/automacoes/Editor';
 import { Entrevistas } from './pages/entrevistas/Entrevistas';
 import { DefinirSenha, TelaBloqueada, TrocarSenhaObrigatoria } from './pages/acesso/Senhas';
@@ -64,6 +65,7 @@ function Rotas() {
         <Route path="/definir-senha" element={<DefinirSenha />} />
         <Route element={<Layout />}>
           <Route index element={<Navigate to={inicio} replace />} />
+          <Route path="/visao-geral" element={<VisaoGeral />} />
           <Route path="/conversas" element={<Conversas />} />
           <Route path="/candidatos" element={<Candidatos />} />
           <Route path="/entrevistas" element={<Entrevistas />} />

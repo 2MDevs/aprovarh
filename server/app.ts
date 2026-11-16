@@ -24,6 +24,7 @@ import { candidatosRouter } from './modules/central/candidatos.ts';
 import { configCentralRouter } from './modules/central/configuracao.ts';
 import { conversasRouter } from './modules/central/conversas.ts';
 import { automacoesRouter } from './modules/automacoes/routes.ts';
+import { painelRouter } from './modules/painel/routes.ts';
 import { rotaEventos } from './core/tempoReal.ts';
 import { exigirLogin } from './middleware/auth.ts';
 import { perfisRouter, unidadesRouter, usuariosRouter } from './modules/usuarios/routes.ts';
@@ -80,6 +81,7 @@ export function criarApp() {
   app.use('/api/central/config', configCentralRouter);
   app.use('/api/entrevistas', entrevistasRouter);
   app.use('/api/automacoes', automacoesRouter);
+  app.use('/api/painel', painelRouter);
   app.use('/api/central/whatsapp', whatsappCentralRouter);
   app.use('/api/central/candidatos', conversasRouter);
   app.use('/api/central/candidatos', candidatosRouter);
