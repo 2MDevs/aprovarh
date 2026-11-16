@@ -1,7 +1,7 @@
 import {
-  Bell, Building2, LayoutDashboard, CalendarDays, LogOut, Menu, MessagesSquare, Monitor, Moon, Plug, ScrollText, Server, Settings2, Smartphone, Sun, UserRound, Users, Workflow, X,
+  Bell, Building2, LayoutDashboard, CalendarDays, LogOut, Menu, MessagesSquare, Monitor, Moon, Pin, PinOff, Plug, ScrollText, Server, Settings2, Smartphone, Sun, UserRound, Users, Workflow, X,
 } from 'lucide-react';
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
 import type { Permissao } from '@shared/permissoes';
 import { LogoHummm, NomePlataforma } from '../components/Marca';
@@ -46,59 +46,144 @@ export function useMenu() {
   });
 }
 
-export function Layout() {
+/** Trava do menu lateral: fica salva neste navegador. */
+const CHAVE_TRAVA = 'aprovarh.menuTravado';
+function lerTrava() {
+  try { return localStorage.getItem(CHAVE_TRAVA) === '1'; } catch { return false; }
+}
+function salvarTrava(v: boolean) {
+  try { localStorage.setItem(CHAVE_TRAVA, v ? '1' : '0'); } catch { /* navegador sem armazenamento: vale só nesta visita */ }
+}
+
+const LARGURA_ABERTO = 'w-[264px]';
+const LARGURA_FECHADO = 'w-[76px]';
+
+function iniciais(nome: string) {
+  const p = nome.trim().split(/\s+/);
+  return ((p[0]?.[0] ?? '') + (p.length > 1 ? p[p.length - 1][0] : '')).toUpperCase();
+}
+
+/**
+ * Menu lateral. No computador ele fica recolhido (só os ícones), abre quando o mouse passa por cima
+ * e pode ser travado aberto pelo botão de trava. No celular abre sempre inteiro, como gaveta.
+ */
+function Lateral({ compacto, travado, onTravar }: { compacto: boolean; travado?: boolean; onTravar?: () => void }) {
   const { sessao, sair } = useSessao();
   const menu = useMenu();
-  const [aberto, setAberto] = useState(false);
-  const local = useLocation();
-  useEffect(() => setAberto(false), [local.pathname]);
   const u = sessao!.usuario!;
-  // Conversas ocupa a altura toda da tela (lista, conversa e perfil com rolagem própria).
-  const telaCheia = local.pathname.startsWith('/conversas') || /^\/automacoes\/[^/]+/.test(local.pathname); // conversa e construtor ocupam a tela toda
-
-  const lateral = (
-    <nav aria-label="Menu principal" className="flex h-full flex-col bg-grafite text-creme">
-      <div className="flex flex-col gap-3 px-6 pb-6 pt-[max(1.5rem,env(safe-area-inset-top))]">
-        <LogoHummm fundo="escuro" className="h-9" />
-        <NomePlataforma escuro className="text-xl" />
+  const rotulo = `whitespace-nowrap transition-opacity duration-150 ${compacto ? 'pointer-events-none opacity-0' : 'opacity-100'}`;
+  return (
+    <nav aria-label="Menu principal" className="flex h-full flex-col overflow-hidden bg-grafite text-creme">
+      <div className="flex min-h-[104px] items-start gap-2 px-4 pb-4 pt-[max(1.5rem,env(safe-area-inset-top))]">
+        {compacto ? (
+          <span className="mx-auto mt-1 grid size-11 shrink-0 place-items-center rounded-xl bg-amarelo text-sm font-bold text-grafite" aria-label="aprovaRH">RH</span>
+        ) : (
+          <>
+            <div className="flex min-w-0 flex-1 flex-col gap-3 pl-2">
+              <LogoHummm fundo="escuro" className="h-9 self-start" />
+              <NomePlataforma escuro className="whitespace-nowrap text-xl" />
+            </div>
+            {onTravar && (
+              <button
+                type="button"
+                onClick={onTravar}
+                aria-pressed={travado}
+                aria-label={travado ? 'Destravar o menu (volta a recolher)' : 'Travar o menu aberto'}
+                title={travado ? 'Destravar o menu' : 'Travar o menu aberto'}
+                className={`grid size-9 shrink-0 place-items-center rounded-lg transition ${travado ? 'bg-amarelo text-grafite' : 'text-creme/60 hover:bg-white/10 hover:text-creme'}`}
+              >
+                {travado ? <PinOff className="size-4" /> : <Pin className="size-4" />}
+              </button>
+            )}
+          </>
+        )}
       </div>
-      <ul className="flex-1 space-y-1 overflow-y-auto px-3">
+      <ul className="flex-1 space-y-1 overflow-y-auto overflow-x-hidden px-3">
         {menu.map((i) => (
           <li key={i.rota}>
             <NavLink
               to={i.rota}
-              className={({ isActive }) => `flex min-h-11 items-center gap-3 rounded-xl px-3 text-[15px] font-medium transition
+              title={compacto ? i.rotulo : undefined}
+              aria-label={compacto ? i.rotulo : undefined}
+              className={({ isActive }) => `flex min-h-11 items-center gap-3 rounded-xl px-4 text-[15px] font-medium transition
                 ${isActive ? 'bg-amarelo text-grafite' : 'text-creme/75 hover:bg-white/8 hover:text-creme'}`}
             >
-              {i.icone}
-              {i.rotulo}
+              <span className="shrink-0">{i.icone}</span>
+              <span className={rotulo}>{i.rotulo}</span>
             </NavLink>
           </li>
         ))}
       </ul>
-      <div className="border-t border-white/10 p-4">
-        <p className="truncate text-sm font-semibold">{u.nome}</p>
-        <p className="truncate text-xs text-creme/60">{u.perfil}{u.setor ? ` · ${u.setor}` : ''}</p>
-        <button onClick={() => void sair()} className="mt-3 inline-flex min-h-11 w-full items-center gap-2 rounded-xl px-3 text-sm text-creme/75 hover:bg-white/8 hover:text-creme">
-          <LogOut className="size-4" /> Sair
+      <div className="border-t border-white/10 px-3 py-4">
+        <div className="flex items-center gap-3 px-1" title={compacto ? u.nome : undefined}>
+          <span className="grid size-10 shrink-0 place-items-center rounded-full bg-white/10 text-sm font-semibold" aria-hidden>{iniciais(u.nome)}</span>
+          <div className={`min-w-0 ${rotulo}`}>
+            <p className="truncate text-sm font-semibold">{u.nome}</p>
+            <p className="truncate text-xs text-creme/60">{u.perfil}{u.setor ? ` · ${u.setor}` : ''}</p>
+          </div>
+        </div>
+        <button
+          onClick={() => void sair()}
+          title={compacto ? 'Sair' : undefined}
+          aria-label="Sair"
+          className="mt-3 flex min-h-11 w-full items-center gap-3 rounded-xl px-4 text-sm text-creme/75 hover:bg-white/8 hover:text-creme"
+        >
+          <LogOut className="size-5 shrink-0" /> <span className={rotulo}>Sair</span>
         </button>
       </div>
-      <div className="faixa-marca h-1" aria-hidden />
+      <div className="faixa-marca h-1 shrink-0" aria-hidden />
     </nav>
   );
+}
+
+export function Layout() {
+  const { sessao } = useSessao();
+  const [aberto, setAberto] = useState(false);
+  const [travado, setTravado] = useState(lerTrava);
+  const [passando, setPassando] = useState(false);
+  const espera = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const local = useLocation();
+  useEffect(() => setAberto(false), [local.pathname]);
+  useEffect(() => () => { if (espera.current) clearTimeout(espera.current); }, []);
+  const u = sessao!.usuario!;
+  // Conversas ocupa a altura toda da tela (lista, conversa e perfil com rolagem própria).
+  const telaCheia = local.pathname.startsWith('/conversas') || /^\/automacoes\/[^/]+/.test(local.pathname); // conversa e construtor ocupam a tela toda
+
+  // Um pequeno atraso evita abrir o menu só de cruzar o mouse por cima dele.
+  const passar = (v: boolean) => {
+    if (espera.current) clearTimeout(espera.current);
+    espera.current = setTimeout(() => setPassando(v), v ? 120 : 180);
+  };
+  const expandido = travado || passando;
+  const travar = () => {
+    const v = !travado;
+    setTravado(v);
+    salvarTrava(v);
+    if (!v) setPassando(true); // destravou com o mouse em cima: continua aberto até o mouse sair
+  };
 
   return (
-    <div className="min-h-dvh lg:grid lg:grid-cols-[264px_1fr]">
-      <aside className="sticky top-0 hidden h-dvh lg:block">{lateral}</aside>
+    <div className="min-h-dvh lg:flex">
+      {/* Reserva o espaço do menu; quando ele abre pelo mouse, passa por cima da tela sem empurrar nada. */}
+      <div className={`hidden shrink-0 transition-[width] duration-200 lg:block ${travado ? LARGURA_ABERTO : LARGURA_FECHADO}`} aria-hidden />
+      <aside
+        className={`fixed inset-y-0 left-0 z-40 hidden h-dvh transition-[width,box-shadow] duration-200 lg:block ${expandido ? LARGURA_ABERTO : LARGURA_FECHADO} ${expandido && !travado ? 'shadow-2xl shadow-black/30' : ''}`}
+        onMouseEnter={() => passar(true)}
+        onMouseLeave={() => passar(false)}
+        onFocus={() => { if (espera.current) clearTimeout(espera.current); setPassando(true); }}
+        onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) passar(false); }}
+      >
+        <Lateral compacto={!expandido} travado={travado} onTravar={travar} />
+      </aside>
 
       {aberto && (
         <div className="fixed inset-0 z-40 lg:hidden" role="dialog" aria-modal="true" aria-label="Menu">
           <div className="absolute inset-0 bg-grafite/50" onClick={() => setAberto(false)} />
-          <div className="absolute inset-y-0 left-0 w-[82%] max-w-[300px] shadow-2xl">{lateral}</div>
+          <div className="absolute inset-y-0 left-0 w-[82%] max-w-[300px] shadow-2xl"><Lateral compacto={false} /></div>
         </div>
       )}
 
-      <div className={`flex min-w-0 flex-col ${telaCheia ? 'h-dvh' : ''}`}>
+      <div className={`flex min-w-0 flex-col lg:flex-1 ${telaCheia ? 'h-dvh' : ''}`}>
         <header className="sticky top-0 z-30 flex items-center gap-2 border-b border-borda bg-fundo/90 px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur lg:px-8">
           <button className="grid size-11 place-items-center rounded-full hover:bg-superficie lg:hidden" onClick={() => setAberto(true)} aria-label="Abrir menu">
             {aberto ? <X className="size-5" /> : <Menu className="size-5" />}
