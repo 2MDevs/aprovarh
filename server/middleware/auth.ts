@@ -54,7 +54,8 @@ export const carregarSessao: RequestHandler = h(async (req, res, next) => {
 
   const [ttlHoras, bloqueioMin] = await Promise.all([cfgNumero('seguranca.sessao_horas'), cfgNumero('seguranca.bloqueio_minutos')]);
   let bloqueada = Boolean(s.bloqueada_em);
-  const ocioso = Date.now() - new Date(s.ultimo_uso_em).getTime() > bloqueioMin * 60_000;
+  // 0 = bloqueio por inatividade desligado.
+  const ocioso = bloqueioMin > 0 && Date.now() - new Date(s.ultimo_uso_em).getTime() > bloqueioMin * 60_000;
 
   if (!bloqueada && ocioso) {
     bloqueada = true;

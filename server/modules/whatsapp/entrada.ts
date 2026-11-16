@@ -30,6 +30,21 @@ export async function guardarEventos(eventos: EventoEntrada[]): Promise<number> 
 
 const ORDEM = { pendente: 0, enviada: 1, entregue: 2, lida: 3, falhou: 4 } as const;
 
+async function vincularLid(db: PoolClient, lid: string, candidatoId: string) {
+  await db.query(
+    `INSERT INTO whatsapp_lids (lid, candidato_id) VALUES ($1, $2) ON CONFLICT (lid) DO UPDATE SET candidato_id = EXCLUDED.candidato_id`,
+    [lid.slice(0, 80), candidatoId],
+  );
+}
+
+/** O mesmo celular pode chegar com ou sem o nono dígito: confere as duas formas. */
+function variantesTelefone(tel: string): string[] {
+  const m = tel.match(/^\+55(\d{2})(\d{8,9})$/);
+  if (!m) return [tel];
+  const [, ddd, n] = m;
+  return n.length === 9 ? [tel, `+55${ddd}${n.slice(1)}`] : [tel, `+55${ddd}9${n}`];
+}
+
 async function processarStatus(db: PoolClient, e: Extract<EventoEntrada, { tipo: 'status' }>) {
   const r = await db.query<{ id: string; situacao_entrega: keyof typeof ORDEM | null; candidato_id: string; unidade_id: string }>(
     `SELECT m.id, m.situacao_entrega, c.id AS candidato_id, c.unidade_id FROM mensagens m JOIN conversas cv ON cv.id = m.conversa_id JOIN candidatos c ON c.id = cv.candidato_id
@@ -38,6 +53,8 @@ async function processarStatus(db: PoolClient, e: Extract<EventoEntrada, { tipo:
   );
   const m = r.rows[0];
   if (!m) return; // status de mensagem que não é do aprovaRH
+  // A confirmação de entrega diz qual é o código ("@lid") deste candidato: guarda para reconhecer as respostas dele.
+  if (e.lid) await vincularLid(db, e.lid, m.candidato_id);
   // Só avança (um "entregue" atrasado não desfaz um "lida").
   if (e.situacao !== 'falhou' && ORDEM[m.situacao_entrega ?? 'pendente'] >= ORDEM[e.situacao]) return;
   await db.query('UPDATE mensagens SET situacao_entrega = $2 WHERE id = $1', [m.id, e.situacao]);
@@ -45,13 +62,30 @@ async function processarStatus(db: PoolClient, e: Extract<EventoEntrada, { tipo:
 }
 
 async function processarMensagem(db: PoolClient, e: Extract<EventoEntrada, { tipo: 'mensagem' }>) {
-  const telHash = hmac(`tel:${e.de}`);
-  const c = await db.query<{ id: string; unidade_id: string; codigo: string; nome: string }>(
-    `SELECT id, unidade_id, codigo, nome FROM candidatos WHERE telefone_hash = $1 AND excluido_em IS NULL ORDER BY candidatura_em DESC LIMIT 1`,
-    [telHash],
-  );
-  const cand = c.rows[0];
-  if (!cand) {
+  type Cand = { id: string; unidade_id: string; codigo: string; nome: string };
+  let cand: Cand | undefined;
+  if (e.de) {
+    const c = await db.query<Cand>(
+      `SELECT id, unidade_id, codigo, nome FROM candidatos WHERE telefone_hash = ANY($1) AND excluido_em IS NULL ORDER BY candidatura_em DESC LIMIT 1`,
+      [variantesTelefone(e.de).map((t) => hmac(`tel:${t}`))],
+    );
+    cand = c.rows[0];
+  }
+  if (!cand && e.lid) {
+    const c = await db.query<Cand>(
+      `SELECT c.id, c.unidade_id, c.codigo, c.nome FROM whatsapp_lids l JOIN candidatos c ON c.id = l.candidato_id WHERE l.lid = $1 AND c.excluido_em IS NULL`,
+      [e.lid],
+    );
+    cand = c.rows[0];
+  }
+  if (cand && e.lid) await vincularLid(db, e.lid, cand.id);
+  if (!cand && !e.de) {
+    // Chegou só o código do WhatsApp, sem telefone, e ele ainda não foi vinculado a ninguém: não dá para saber de quem é.
+    await auditar({ acao: 'whatsapp.mensagem_sem_remetente', resultado: 'falha', detalhes: { motivo: 'o WhatsApp não informou o telefone de quem escreveu', nomePerfil: e.nome ?? null }, ator: { usuarioNome: 'Webhook do WhatsApp' } }, db);
+    return;
+  }
+  if (!cand && e.de) {
+    const telHash = hmac(`tel:${e.de}`);
     // Número que não é de candidato: vai para "Contatos não identificados" e não cria candidato sozinho.
     await db.query(
       `INSERT INTO contatos_nao_identificados (telefone, telefone_hash, telefone_final, nome_perfil, ultima_mensagem)
@@ -62,6 +96,7 @@ async function processarMensagem(db: PoolClient, e: Extract<EventoEntrada, { tip
     );
     return;
   }
+  if (!cand) return;
   const cv = await db.query<{ id: string }>(
     `INSERT INTO conversas (candidato_id) VALUES ($1) ON CONFLICT (candidato_id) DO UPDATE SET candidato_id = EXCLUDED.candidato_id RETURNING id`,
     [cand.id],
