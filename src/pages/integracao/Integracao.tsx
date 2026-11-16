@@ -1,5 +1,5 @@
 import { LayoutGrid, Lock, Plug, Search } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useSessao } from '../../app/sessao';
 import { Abas, Aviso, Botao, Cabecalho, Campo, Carregando, ErroCarregar, SemPermissao, Selo, SeloSigla } from '../../components/ui';
@@ -32,9 +32,11 @@ function Reautenticar({ onOk }: { onOk: () => void }) {
   const [conferindo, setConferindo] = useState(true);
 
   // Se a senha foi confirmada há menos de 10 minutos, entra direto.
+  const aoConfirmar = useRef(onOk);
+  aoConfirmar.current = onOk;
   useEffect(() => {
-    api.get('/api/integracao/cards').then(onOk, () => setConferindo(false));
-  }, [onOk]);
+    api.get('/api/integracao/cards').then(() => aoConfirmar.current(), () => setConferindo(false));
+  }, []);
 
   if (conferindo) return <Carregando />;
   return (

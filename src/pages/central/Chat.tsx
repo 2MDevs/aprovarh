@@ -30,10 +30,14 @@ export function Chat({ candidatoId, versao, onVoltar, onAbrirPerfil, onLida }: {
   const area = useRef<HTMLDivElement>(null);
   const primeiraCarga = useRef(true);
 
+  // onLida fica numa referência: a função muda a cada desenho da tela de fora e NÃO pode refazer a busca
+  // (isso criava um ciclo sem fim de requisições: carregar → marcar lida → recarregar a lista → carregar...).
+  const aoLer = useRef(onLida);
+  aoLer.current = onLida;
   const marcarLida = useCallback(async () => {
     await api.post(`/api/central/candidatos/${candidatoId}/lida`).catch(() => {});
-    onLida();
-  }, [candidatoId, onLida]);
+    aoLer.current();
+  }, [candidatoId]);
 
   // Últimas mensagens (na abertura e a cada aviso em tempo real).
   const carregarRecentes = useCallback(async () => {
