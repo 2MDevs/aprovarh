@@ -1,5 +1,6 @@
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom';
-import { Layout, useMenu } from './app/Layout';
+import { Ajustes, Layout, useMenu } from './app/Layout';
+import { Conexao } from './pages/conexao/Conexao';
 import { SessaoProvider, useSessao } from './app/sessao';
 import { Carregando, ToastProvider } from './components/ui';
 import { Login } from './pages/acesso/Login';
@@ -78,6 +79,8 @@ function Rotas() {
           <Route path="/sistema" element={<Sistema />} />
           <Route path="/integracao" element={<Integracao />} />
           <Route path="/conta" element={<Conta />} />
+          <Route path="/ajustes" element={<Ajustes />} />
+          <Route path="/conexao" element={<Conexao />} />
           <Route path="*" element={<Navigate to={inicio} replace />} />
         </Route>
       </Routes>

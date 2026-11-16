@@ -1,8 +1,8 @@
 import {
-  Bell, Building2, LayoutDashboard, CalendarDays, LogOut, Menu, MessagesSquare, Monitor, Moon, Pin, PinOff, Plug, ScrollText, Server, Settings2, Smartphone, Sun, UserRound, Users, Workflow, X,
+  Bell, Building2, CalendarDays, ChevronLeft, ChevronRight, LayoutDashboard, LogOut, Menu, MessagesSquare, Monitor, Moon, Plug, QrCode, ScrollText, Server, Settings2, Smartphone, Sun, Tags, UserRound, Users, Workflow, X,
 } from 'lucide-react';
-import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
+import { useEffect, useState, type ReactNode } from 'react';
+import { Link, Outlet, useLocation } from 'react-router-dom';
 import type { Permissao } from '@shared/permissoes';
 import { LogoHummm, NomePlataforma } from '../components/Marca';
 import { api } from '../lib/api';
@@ -14,27 +14,32 @@ import { useSessao } from './sessao';
 interface ItemMenu {
   rota: string;
   rotulo: string;
+  descricao?: string;
   icone: ReactNode;
+  /** "principal" fica na barra lateral; "ajustes" fica dentro da tela Configurações (engrenagem). */
+  grupo: 'principal' | 'ajustes';
   permissao?: Permissao | Permissao[];
   somenteDesenvolvedor?: boolean;
 }
 
+const I = 'size-[22px]';
 /** Só aparecem as telas que a pessoa pode usar. A primeira da lista é a tela inicial. */
 export const MENU: ItemMenu[] = [
-  // Central de RH
-  { rota: '/visao-geral', rotulo: 'Visão geral', icone: <LayoutDashboard className="size-5" />, permissao: 'dashboard.ver' },
-  { rota: '/conversas', rotulo: 'Conversas', icone: <MessagesSquare className="size-5" />, permissao: 'candidatos.ver' },
-  { rota: '/candidatos', rotulo: 'Candidatos', icone: <Users className="size-5" />, permissao: 'candidatos.ver' },
-  { rota: '/entrevistas', rotulo: 'Entrevistas', icone: <CalendarDays className="size-5" />, permissao: 'candidatos.ver' },
-  { rota: '/automacoes', rotulo: 'Automações', icone: <Workflow className="size-5" />, permissao: 'automacoes.ver' },
-  { rota: '/configuracoes', rotulo: 'Configurações', icone: <Settings2 className="size-5" />, permissao: 'candidatos.ver' },
-  // Administração
-  { rota: '/administracao', rotulo: 'Usuários e unidades', icone: <Building2 className="size-5" />, permissao: ['usuarios.gerenciar', 'unidades.gerenciar'] },
-  { rota: '/dispositivos', rotulo: 'Dispositivos', icone: <Smartphone className="size-5" /> },
-  { rota: '/auditoria', rotulo: 'Auditoria', icone: <ScrollText className="size-5" />, permissao: 'auditoria.ver' },
-  { rota: '/sistema', rotulo: 'Sistema', icone: <Server className="size-5" />, permissao: 'sistema.ver' },
-  { rota: '/integracao', rotulo: 'Integração', icone: <Plug className="size-5" />, somenteDesenvolvedor: true },
-  { rota: '/conta', rotulo: 'Minha conta', icone: <UserRound className="size-5" /> },
+  // Barra lateral
+  { grupo: 'principal', rota: '/visao-geral', rotulo: 'Visão geral', icone: <LayoutDashboard className={I} />, permissao: 'dashboard.ver' },
+  { grupo: 'principal', rota: '/conversas', rotulo: 'Conversas', icone: <MessagesSquare className={I} />, permissao: 'candidatos.ver' },
+  { grupo: 'principal', rota: '/candidatos', rotulo: 'Candidatos', icone: <Users className={I} />, permissao: 'candidatos.ver' },
+  { grupo: 'principal', rota: '/entrevistas', rotulo: 'Entrevistas', icone: <CalendarDays className={I} />, permissao: 'candidatos.ver' },
+  { grupo: 'principal', rota: '/automacoes', rotulo: 'Automações', icone: <Workflow className={I} />, permissao: 'automacoes.ver' },
+  // Dentro de Configurações (engrenagem)
+  { grupo: 'ajustes', rota: '/conta', rotulo: 'Minha conta', descricao: 'Senha, PIN de desbloqueio e sessões', icone: <UserRound className={I} /> },
+  { grupo: 'ajustes', rota: '/configuracoes', rotulo: 'Status e tags', descricao: 'Etapas do processo seletivo e marcadores dos candidatos', icone: <Tags className={I} />, permissao: 'candidatos.ver' },
+  { grupo: 'ajustes', rota: '/conexao', rotulo: 'Conexão do WhatsApp', descricao: 'Conectar o celular pelo QR Code', icone: <QrCode className={I} />, permissao: 'whatsapp.conectar' },
+  { grupo: 'ajustes', rota: '/administracao', rotulo: 'Usuários e unidades', descricao: 'Pessoas, perfis, permissões e lojas', icone: <Building2 className={I} />, permissao: ['usuarios.gerenciar', 'unidades.gerenciar'] },
+  { grupo: 'ajustes', rota: '/dispositivos', rotulo: 'Dispositivos', descricao: 'Aparelhos que acessaram o sistema', icone: <Smartphone className={I} /> },
+  { grupo: 'ajustes', rota: '/auditoria', rotulo: 'Auditoria', descricao: 'Registro de tudo o que foi feito', icone: <ScrollText className={I} />, permissao: 'auditoria.ver' },
+  { grupo: 'ajustes', rota: '/sistema', rotulo: 'Sistema', descricao: 'Uso do servidor, API e documentos da plataforma', icone: <Server className={I} />, permissao: 'sistema.ver' },
+  { grupo: 'ajustes', rota: '/integracao', rotulo: 'Integração', descricao: 'E-mail, WhatsApp, segurança e atualização do sistema', icone: <Plug className={I} />, somenteDesenvolvedor: true },
 ];
 
 export function useMenu() {
@@ -46,149 +51,148 @@ export function useMenu() {
   });
 }
 
-/** Trava do menu lateral: fica salva neste navegador. */
-const CHAVE_TRAVA = 'aprovarh.menuTravado';
-function lerTrava() {
-  try { return localStorage.getItem(CHAVE_TRAVA) === '1'; } catch { return false; }
-}
-function salvarTrava(v: boolean) {
-  try { localStorage.setItem(CHAVE_TRAVA, v ? '1' : '0'); } catch { /* navegador sem armazenamento: vale só nesta visita */ }
-}
-
-const LARGURA_ABERTO = 'w-[264px]';
-const LARGURA_FECHADO = 'w-[76px]';
-
 function iniciais(nome: string) {
   const p = nome.trim().split(/\s+/);
   return ((p[0]?.[0] ?? '') + (p.length > 1 ? p[p.length - 1][0] : '')).toUpperCase();
 }
 
-/**
- * Menu lateral. No computador ele fica recolhido (só os ícones), abre quando o mouse passa por cima
- * e pode ser travado aberto pelo botão de trava. No celular abre sempre inteiro, como gaveta.
- */
-function Lateral({ compacto, travado, onTravar }: { compacto: boolean; travado?: boolean; onTravar?: () => void }) {
+/** Tela Configurações (engrenagem): reúne a conta e tudo o que é de administração. */
+export function Ajustes() {
   const { sessao, sair } = useSessao();
-  const menu = useMenu();
+  const itens = useMenu().filter((i) => i.grupo === 'ajustes');
   const u = sessao!.usuario!;
-  const rotulo = `whitespace-nowrap transition-opacity duration-150 ${compacto ? 'pointer-events-none opacity-0' : 'opacity-100'}`;
   return (
-    <nav aria-label="Menu principal" className="flex h-full flex-col overflow-hidden bg-grafite text-creme">
-      <div className="flex min-h-[104px] items-start gap-2 px-4 pb-4 pt-[max(1.5rem,env(safe-area-inset-top))]">
-        {compacto ? (
-          <span className="mx-auto mt-1 grid size-11 shrink-0 place-items-center rounded-xl bg-amarelo text-sm font-bold text-grafite" aria-label="aprovaRH">RH</span>
-        ) : (
-          <>
-            <div className="flex min-w-0 flex-1 flex-col gap-3 pl-2">
-              <LogoHummm fundo="escuro" className="h-9 self-start" />
-              <NomePlataforma escuro className="whitespace-nowrap text-xl" />
-            </div>
-            {onTravar && (
-              <button
-                type="button"
-                onClick={onTravar}
-                aria-pressed={travado}
-                aria-label={travado ? 'Destravar o menu (volta a recolher)' : 'Travar o menu aberto'}
-                title={travado ? 'Destravar o menu' : 'Travar o menu aberto'}
-                className={`grid size-9 shrink-0 place-items-center rounded-lg transition ${travado ? 'bg-amarelo text-grafite' : 'text-creme/60 hover:bg-white/10 hover:text-creme'}`}
-              >
-                {travado ? <PinOff className="size-4" /> : <Pin className="size-4" />}
-              </button>
-            )}
-          </>
-        )}
-      </div>
-      <ul className="flex-1 space-y-1 overflow-y-auto overflow-x-hidden px-3">
-        {menu.map((i) => (
+    <div className="mx-auto max-w-2xl">
+      <h1 className="text-2xl font-bold tracking-tight">Configurações</h1>
+      <Link to="/conta" className="mt-5 flex items-center gap-4 rounded-2xl p-3 hover:bg-superficie">
+        <span className="grid size-16 shrink-0 place-items-center rounded-full bg-grafite text-xl font-bold text-amarelo" aria-hidden>{iniciais(u.nome)}</span>
+        <span className="min-w-0">
+          <span className="block truncate text-lg font-semibold">{u.nome}</span>
+          <span className="block truncate text-sm text-suave">{u.perfil}{u.setor ? ` · ${u.setor}` : ''}</span>
+        </span>
+      </Link>
+      <ul className="mt-3 divide-y divide-borda border-y border-borda">
+        {itens.map((i) => (
           <li key={i.rota}>
-            <NavLink
-              to={i.rota}
-              title={compacto ? i.rotulo : undefined}
-              aria-label={compacto ? i.rotulo : undefined}
-              className={({ isActive }) => `flex min-h-11 items-center gap-3 rounded-xl px-4 text-[15px] font-medium transition
-                ${isActive ? 'bg-amarelo text-grafite' : 'text-creme/75 hover:bg-white/8 hover:text-creme'}`}
-            >
-              <span className="shrink-0">{i.icone}</span>
-              <span className={rotulo}>{i.rotulo}</span>
-            </NavLink>
+            <Link to={i.rota} className="flex min-h-16 items-center gap-4 px-3 py-3 hover:bg-superficie">
+              <span className="grid size-10 shrink-0 place-items-center text-suave">{i.icone}</span>
+              <span className="min-w-0 flex-1">
+                <span className="block font-medium">{i.rotulo}</span>
+                {i.descricao && <span className="block truncate text-sm text-suave">{i.descricao}</span>}
+              </span>
+              <ChevronRight className="size-4 shrink-0 text-suave" aria-hidden />
+            </Link>
           </li>
         ))}
       </ul>
-      <div className="border-t border-white/10 px-3 py-4">
-        <div className="flex items-center gap-3 px-1" title={compacto ? u.nome : undefined}>
-          <span className="grid size-10 shrink-0 place-items-center rounded-full bg-white/10 text-sm font-semibold" aria-hidden>{iniciais(u.nome)}</span>
-          <div className={`min-w-0 ${rotulo}`}>
-            <p className="truncate text-sm font-semibold">{u.nome}</p>
-            <p className="truncate text-xs text-creme/60">{u.perfil}{u.setor ? ` · ${u.setor}` : ''}</p>
-          </div>
-        </div>
-        <button
-          onClick={() => void sair()}
-          title={compacto ? 'Sair' : undefined}
-          aria-label="Sair"
-          className="mt-3 flex min-h-11 w-full items-center gap-3 rounded-xl px-4 text-sm text-creme/75 hover:bg-white/8 hover:text-creme"
-        >
-          <LogOut className="size-5 shrink-0" /> <span className={rotulo}>Sair</span>
-        </button>
-      </div>
-      <div className="faixa-marca h-1 shrink-0" aria-hidden />
-    </nav>
+      <button onClick={() => void sair()} className="mt-3 flex min-h-14 w-full items-center gap-4 rounded-2xl px-3 font-medium text-vermelho hover:bg-vermelho/10">
+        <span className="grid size-10 place-items-center"><LogOut className={I} /></span> Sair
+      </button>
+    </div>
+  );
+}
+
+/** Botão redondo da barra lateral: só o ícone, com o nome ao passar o mouse. */
+function BotaoBarra({ rota, rotulo, ativo, children }: { rota: string; rotulo: string; ativo: boolean; children: ReactNode }) {
+  return (
+    <Link to={rota} aria-label={rotulo} aria-current={ativo ? 'page' : undefined}
+      className={`group relative grid size-11 place-items-center rounded-full transition ${ativo ? 'bg-amarelo text-grafite' : 'text-creme/70 hover:bg-white/10 hover:text-creme'}`}>
+      {children}
+      <span role="tooltip" className="pointer-events-none absolute left-full z-50 ml-3 hidden whitespace-nowrap rounded-lg bg-grafite px-2.5 py-1.5 text-xs font-medium text-creme shadow-lg ring-1 ring-white/15 group-hover:block group-focus-visible:block">
+        {rotulo}
+      </span>
+    </Link>
   );
 }
 
 export function Layout() {
-  const { sessao } = useSessao();
+  const { sessao, sair, pode } = useSessao();
+  const menu = useMenu();
+  const principal = menu.filter((i) => i.grupo === 'principal');
+  const ajustes = menu.filter((i) => i.grupo === 'ajustes');
   const [aberto, setAberto] = useState(false);
-  const [travado, setTravado] = useState(lerTrava);
-  const [passando, setPassando] = useState(false);
-  const espera = useRef<ReturnType<typeof setTimeout> | null>(null);
   const local = useLocation();
   useEffect(() => setAberto(false), [local.pathname]);
-  useEffect(() => () => { if (espera.current) clearTimeout(espera.current); }, []);
   const u = sessao!.usuario!;
+  const em = (rota: string) => local.pathname === rota || local.pathname.startsWith(`${rota}/`);
+  const emConta = em('/conta');
+  const emAjustes = em('/ajustes') || (!emConta && ajustes.some((i) => em(i.rota)));
+  const subAjuste = ajustes.find((i) => em(i.rota));
   // Conversas ocupa a altura toda da tela (lista, conversa e perfil com rolagem própria).
-  const telaCheia = local.pathname.startsWith('/conversas') || /^\/automacoes\/[^/]+/.test(local.pathname); // conversa e construtor ocupam a tela toda
+  const telaCheia = em('/conversas') || /^\/automacoes\/[^/]+/.test(local.pathname); // conversa e construtor ocupam a tela toda
 
-  // Um pequeno atraso evita abrir o menu só de cruzar o mouse por cima dele.
-  const passar = (v: boolean) => {
-    if (espera.current) clearTimeout(espera.current);
-    espera.current = setTimeout(() => setPassando(v), v ? 120 : 180);
-  };
-  const expandido = travado || passando;
-  const travar = () => {
-    const v = !travado;
-    setTravado(v);
-    salvarTrava(v);
-    if (!v) setPassando(true); // destravou com o mouse em cima: continua aberto até o mouse sair
-  };
+  // Formulário público fechado: a equipe vê o motivo (o candidato só vê "indisponível").
+  const [formulario, setFormulario] = useState<{ aberto: boolean; falta: string[] } | null>(null);
+  const veCandidatos = pode('candidatos.ver');
+  useEffect(() => {
+    if (veCandidatos) api.get<{ aberto: boolean; falta: string[] }>('/api/formulario-situacao').then(setFormulario).catch(() => {});
+  }, [veCandidatos, local.pathname]);
 
   return (
-    <div className="min-h-dvh lg:flex">
-      {/* Reserva o espaço do menu; quando ele abre pelo mouse, passa por cima da tela sem empurrar nada. */}
-      <div className={`hidden shrink-0 transition-[width] duration-200 lg:block ${travado ? LARGURA_ABERTO : LARGURA_FECHADO}`} aria-hidden />
-      <aside
-        className={`fixed inset-y-0 left-0 z-40 hidden h-dvh transition-[width,box-shadow] duration-200 lg:block ${expandido ? LARGURA_ABERTO : LARGURA_FECHADO} ${expandido && !travado ? 'shadow-2xl shadow-black/30' : ''}`}
-        onMouseEnter={() => passar(true)}
-        onMouseLeave={() => passar(false)}
-        onFocus={() => { if (espera.current) clearTimeout(espera.current); setPassando(true); }}
-        onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) passar(false); }}
-      >
-        <Lateral compacto={!expandido} travado={travado} onTravar={travar} />
-      </aside>
+    <div className="min-h-dvh lg:pl-[68px]">
+      {/* Barra lateral fina (computador): só ícones; engrenagem e perfil embaixo. */}
+      <nav aria-label="Menu principal" className="fixed inset-y-0 left-0 z-40 hidden w-[68px] flex-col items-center bg-grafite py-3 lg:flex">
+        <Link to="/" aria-label="aprovaRH - Hummm! Pizzas: início" className="mb-3 grid size-11 place-items-center rounded-xl bg-amarelo text-[13px] font-extrabold tracking-tight text-grafite">RH</Link>
+        <div className="flex flex-1 flex-col items-center gap-1.5">
+          {principal.map((i) => <BotaoBarra key={i.rota} rota={i.rota} rotulo={i.rotulo} ativo={em(i.rota)}>{i.icone}</BotaoBarra>)}
+        </div>
+        <div className="flex flex-col items-center gap-1.5">
+          <BotaoBarra rota="/ajustes" rotulo="Configurações" ativo={emAjustes}><Settings2 className={I} /></BotaoBarra>
+          <Link to="/conta" aria-label={`Minha conta: ${u.nome}`} title={u.nome}
+            className={`grid size-11 place-items-center rounded-full text-sm font-bold transition ${emConta ? 'bg-amarelo text-grafite' : 'bg-white/12 text-creme hover:bg-white/20'}`}>
+            {iniciais(u.nome)}
+          </Link>
+        </div>
+      </nav>
 
+      {/* Celular: gaveta com os nomes. */}
       {aberto && (
-        <div className="fixed inset-0 z-40 lg:hidden" role="dialog" aria-modal="true" aria-label="Menu">
+        <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true" aria-label="Menu">
           <div className="absolute inset-0 bg-grafite/50" onClick={() => setAberto(false)} />
-          <div className="absolute inset-y-0 left-0 w-[82%] max-w-[300px] shadow-2xl"><Lateral compacto={false} /></div>
+          <nav aria-label="Menu principal" className="absolute inset-y-0 left-0 flex w-[82%] max-w-[300px] flex-col bg-grafite text-creme shadow-2xl">
+            <div className="flex flex-col gap-3 px-6 pb-5 pt-[max(1.5rem,env(safe-area-inset-top))]">
+              <LogoHummm fundo="escuro" className="h-9 self-start" />
+              <NomePlataforma escuro className="text-xl" />
+            </div>
+            <ul className="flex-1 space-y-1 overflow-y-auto px-3">
+              {[...principal, { rota: '/ajustes', rotulo: 'Configurações', icone: <Settings2 className={I} /> }].map((i) => {
+                const ativo = i.rota === '/ajustes' ? emAjustes : em(i.rota);
+                return (
+                  <li key={i.rota}>
+                    <Link to={i.rota} aria-current={ativo ? 'page' : undefined}
+                      className={`flex min-h-12 items-center gap-3 rounded-xl px-3 text-[15px] font-medium ${ativo ? 'bg-amarelo text-grafite' : 'text-creme/80 hover:bg-white/8'}`}>
+                      {i.icone} {i.rotulo}
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+            <div className="border-t border-white/10 p-3">
+              <Link to="/conta" className="flex items-center gap-3 rounded-xl p-2 hover:bg-white/8">
+                <span className="grid size-10 shrink-0 place-items-center rounded-full bg-white/12 text-sm font-bold" aria-hidden>{iniciais(u.nome)}</span>
+                <span className="min-w-0">
+                  <span className="block truncate text-sm font-semibold">{u.nome}</span>
+                  <span className="block truncate text-xs text-creme/60">{u.perfil}{u.setor ? ` · ${u.setor}` : ''}</span>
+                </span>
+              </Link>
+              <button onClick={() => void sair()} className="mt-1 flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-sm text-creme/80 hover:bg-white/8">
+                <LogOut className="size-5" /> Sair
+              </button>
+            </div>
+            <div className="faixa-marca h-1 shrink-0" aria-hidden />
+          </nav>
         </div>
       )}
 
-      <div className={`flex min-w-0 flex-col lg:flex-1 ${telaCheia ? 'h-dvh' : ''}`}>
-        <header className="sticky top-0 z-30 flex items-center gap-2 border-b border-borda bg-fundo/90 px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur lg:px-8">
+      <div className={`flex min-w-0 flex-col ${telaCheia ? 'h-dvh' : 'min-h-dvh'}`}>
+        <header className="sticky top-0 z-30 flex items-center gap-2 border-b border-borda bg-fundo/90 px-4 pb-2 pt-[max(0.5rem,env(safe-area-inset-top))] backdrop-blur lg:px-6">
           <button className="grid size-11 place-items-center rounded-full hover:bg-superficie lg:hidden" onClick={() => setAberto(true)} aria-label="Abrir menu">
             {aberto ? <X className="size-5" /> : <Menu className="size-5" />}
           </button>
-          <Link to="/" className="lg:hidden"><NomePlataforma className="text-lg" /></Link>
+          <Link to="/" className="flex items-baseline gap-2">
+            <NomePlataforma className="text-lg" />
+            <span className="hidden text-sm font-medium text-suave sm:inline">Hummm! Pizzas</span>
+          </Link>
           <div className="flex-1" />
           <IndicadorConexao />
           <BotaoTema />
@@ -196,13 +200,27 @@ export function Layout() {
         </header>
 
         {sessao?.modoConfiguracao && u.desenvolvedor && (
-          <div className="border-b border-amarelo bg-amarelo/25 px-4 py-2.5 text-sm lg:px-8">
+          <div className="border-b border-amarelo bg-amarelo/25 px-4 py-2.5 text-sm lg:px-6">
             <strong>Configuração inicial pendente.</strong> O e-mail (SMTP) ainda não foi configurado, por isso o 2FA está desligado.{' '}
             <Link to="/integracao?aba=integracoes&abrir=smtp" className="font-semibold underline">Configurar agora</Link>
           </div>
         )}
+        {formulario && !formulario.aberto && (
+          <div className="border-b border-vermelho/40 bg-vermelho/10 px-4 py-2.5 text-sm lg:px-6" role="status">
+            <strong>O formulário de candidatura está fechado para os candidatos.</strong>{' '}
+            {formulario.falta.includes('aviso') && <>Falta publicar o aviso de privacidade (LGPD). {u.desenvolvedor
+              ? <Link to="/integracao?aba=geral&abrir=privacidade" className="font-semibold underline">Publicar agora</Link>
+              : 'Peça à TI para publicar em Integração.'}{' '}</>}
+            {formulario.falta.includes('unidade') && <>Falta uma unidade ativa recebendo candidaturas (Configurações › Usuários e unidades).</>}
+          </div>
+        )}
 
         <main className={telaCheia ? 'min-h-0 flex-1' : 'mx-auto w-full max-w-6xl flex-1 px-4 py-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] lg:px-8 lg:py-8'}>
+          {subAjuste && (
+            <Link to="/ajustes" className="mb-4 inline-flex items-center gap-1 text-sm font-medium text-suave hover:text-texto">
+              <ChevronLeft className="size-4" /> Configurações
+            </Link>
+          )}
           <Outlet />
         </main>
       </div>

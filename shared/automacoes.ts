@@ -141,13 +141,10 @@ export const CARDS: DefCard[] = [
   { tipo: 'condicao.entrevista_confirmada', categoria: 'condicao', nome: 'Verificar se a entrevista foi confirmada', descricao: 'A entrevista marcada está confirmada?', saidas: SIM_NAO, parametros: [] },
 
   // ── C. Ações ─────────────────────────────────────────────────────────────
-  { tipo: 'acao.whatsapp_mensagem', categoria: 'acao', nome: 'Enviar mensagem pelo WhatsApp', descricao: 'Texto livre. Na Meta, só sai se o candidato escreveu nas últimas 24 h.',
+  { tipo: 'acao.whatsapp_mensagem', categoria: 'acao', nome: 'Enviar mensagem pelo WhatsApp', descricao: 'Texto livre, enviado para o número do candidato.',
     usaWhatsapp: true, saidas: PROXIMO, tentativas: 3,
     parametros: [
       { chave: 'texto', rotulo: 'Mensagem', tipo: 'textoLongo', obrigatorio: true, variaveis: true },
-      { chave: 'seFechada', rotulo: 'Se a janela de 24 h da Meta estiver fechada', tipo: 'selecao', padrao: 'portal', opcoes: [
-        { valor: 'portal', rotulo: 'Enviar pelo chat do portal' }, { valor: 'falhar', rotulo: 'Marcar o passo com erro' },
-      ] },
     ] },
   { tipo: 'acao.chat_mensagem', categoria: 'acao', nome: 'Enviar mensagem pelo chat interno', descricao: 'Aparece para o candidato no portal.', saidas: PROXIMO,
     parametros: [{ chave: 'texto', rotulo: 'Mensagem', tipo: 'textoLongo', obrigatorio: true, variaveis: true }] },
@@ -345,7 +342,7 @@ export function validarFluxo(f: Fluxo, ctx: ContextoValidacao = {}): Problema[] 
       const erro = conferirParametro(par, v, ctx, f, n);
       if (erro) p.push({ noId: n.id, mensagem: `"${nomeDo(n)}": ${erro}` });
     }
-    if (def.usaWhatsapp && ctx.whatsappConfigurado === false) p.push({ noId: n.id, mensagem: `"${nomeDo(n)}" usa o WhatsApp, que ainda não foi configurado.` });
+    if (def.usaWhatsapp && ctx.whatsappConfigurado === false) p.push({ noId: n.id, mensagem: `"${nomeDo(n)}" usa o WhatsApp, mas a Evolution API ainda não foi configurada (Integração › WhatsApp). Depois conecte o celular em "Conexão do WhatsApp".` });
     if (n.tipo === 'acao.whatsapp_mensagem' && ctx.provedor === 'meta') {
       p.push({ noId: n.id, aviso: true, mensagem: `"${nomeDo(n)}": na Meta, texto livre só sai até 24 h depois da última mensagem do candidato.` });
     }

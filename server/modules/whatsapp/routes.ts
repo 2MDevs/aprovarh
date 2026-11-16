@@ -9,7 +9,7 @@ import { badRequest, h, HttpError, ipDe, notFound, parse } from '../../lib/http.
 import { exigirDesenvolvedor, exigirLogin, exigirPermissao, exigirReautenticacao } from '../../middleware/auth.ts';
 import { candidatoVisivel, formatarTelefone } from '../central/service.ts';
 import {
-  assinaturaMetaValida, configWhatsapp, faltandoWhatsapp, listarModelos, testarConexao, tokenEvolutionValido, whatsappConfigurado,
+  assinaturaMetaValida, configWhatsapp, conectar, desconectar, estadoConexao, faltandoWhatsapp, listarModelos, testarConexao, tokenEvolutionValido, whatsappConfigurado,
 } from './cliente.ts';
 import { eventosEvolution, eventosMeta, guardarEventos } from './entrada.ts';
 import { enfileirar } from './envio.ts';
@@ -82,7 +82,7 @@ whatsappIntegracaoRouter.get('/situacao', h(async (_req, res) => {
     provedor: c.provedor,
     configurado: await whatsappConfigurado(),
     faltando: await faltandoWhatsapp(),
-    webhook: c.provedor === 'meta' ? '/api/webhooks/whatsapp' : '/api/webhooks/evolution',
+    webhook: '/api/webhooks/evolution',
     fila: Object.fromEntries(fila.rows.map((r) => [r.situacao, r.n])),
     entrada: entrada.rows[0],
   });
@@ -129,6 +129,47 @@ whatsappIntegracaoRouter.post('/modelos/sincronizar', h(async (req, res) => {
 whatsappIntegracaoRouter.get('/modelos', h(async (_req, res) => {
   const { rows } = await pool.query(`SELECT nome, idioma, categoria, situacao, corpo, variaveis, botoes, sincronizado_em FROM whatsapp_modelos ORDER BY nome, idioma`);
   res.json(rows);
+}));
+
+// ═══════════════════════ Conexão do WhatsApp (QR Code) — permissão whatsapp.conectar ═══════════════════════
+export const whatsappConexaoRouter = Router();
+whatsappConexaoRouter.use(exigirLogin(), exigirPermissao('whatsapp.conectar'));
+
+const falhaEvolution = (err: unknown) => new HttpError(502, (err as Error).message, 'whatsapp_falhou');
+
+whatsappConexaoRouter.get('/', h(async (req, res) => {
+  const faltando = await faltandoWhatsapp();
+  // Quem não é da TI não vê a lista técnica do que falta, só que falta.
+  const podeConfigurar = Boolean(req.usuario!.desenvolvedor);
+  if (faltando.length) return res.json({ configurado: false, faltando: podeConfigurar ? faltando : [], podeConfigurar, conexao: null });
+  try {
+    res.json({ configurado: true, faltando: [], podeConfigurar, conexao: await estadoConexao() });
+  } catch (err) {
+    throw falhaEvolution(err);
+  }
+}));
+
+whatsappConexaoRouter.post('/conectar', h(async (req, res) => {
+  if (!(await whatsappConfigurado())) throw badRequest('Os dados da Evolution API ainda não foram preenchidos (Integração › WhatsApp).', 'whatsapp_nao_configurado');
+  try {
+    const r = await conectar(req.usuario!.id);
+    await auditarReq(req, { acao: 'whatsapp.conexao_iniciada', resultado: 'sucesso', detalhes: { estado: r.estado, instanciaCriada: r.criada } });
+    res.json(r);
+  } catch (err) {
+    await auditarReq(req, { acao: 'whatsapp.conexao_iniciada', resultado: 'falha', detalhes: { erro: (err as Error).message } });
+    throw falhaEvolution(err);
+  }
+}));
+
+whatsappConexaoRouter.post('/desconectar', h(async (req, res) => {
+  try {
+    await desconectar();
+    await auditarReq(req, { acao: 'whatsapp.desconectado', resultado: 'sucesso' });
+    res.json({ ok: true });
+  } catch (err) {
+    await auditarReq(req, { acao: 'whatsapp.desconectado', resultado: 'falha', detalhes: { erro: (err as Error).message } });
+    throw falhaEvolution(err);
+  }
 }));
 
 // ═══════════════════════ Central: enviar pelo WhatsApp e contatos não identificados ═══════════════════════

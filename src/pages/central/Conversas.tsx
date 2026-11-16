@@ -59,7 +59,7 @@ export function Conversas() {
       <section className={`flex w-full flex-col border-r border-borda bg-superficie md:w-[340px] lg:w-[380px] ${selecionado ? 'hidden md:flex' : 'flex'}`} aria-label="Candidatos">
         <div className="space-y-3 border-b border-borda p-3">
           <div className="flex items-center justify-between gap-2 px-1">
-            <h1 className="text-lg font-bold">Conversas</h1>
+            <h1 className="text-xl font-bold tracking-tight">aprovaRH <span className="font-medium text-suave">- Hummm! Pizzas</span></h1>
             {sessao?.usuario?.todasUnidades && (
               <button onClick={() => setNaoIdentificados(true)} title="Contatos não identificados" aria-label="Contatos não identificados"
                 className="grid size-10 place-items-center rounded-full text-suave hover:bg-superficie-2 hover:text-texto">

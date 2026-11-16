@@ -1,11 +1,13 @@
 import crypto from 'node:crypto';
-import { cfg } from '../../core/settings.ts';
+import { env } from '../../config/env.ts';
+import { cfg, gravarConfig } from '../../core/settings.ts';
+import { pool } from '../../db/pool.ts';
 
 /**
- * Cliente do WhatsApp com dois provedores, escolhidos na tela Integração:
- * - "meta": WhatsApp Business Cloud API (oficial). Fora da janela de 24 h só envia modelo aprovado.
- * - "evolution": Evolution API (instância conectada ao WhatsApp Web). Envia texto a qualquer momento,
- *   mas NÃO é oficial: a Meta pode restringir ou banir o número (ver decisão D27).
+ * Cliente do WhatsApp.
+ * Por enquanto o aprovaRH usa SOMENTE a Evolution API (instância do WhatsApp Web conectada por QR Code) — decisão D40.
+ * O código da Meta (Cloud API oficial) continua aqui, desligado, para ser reativado no futuro sem refazer tudo.
+ * A Evolution NÃO é oficial: o WhatsApp pode restringir ou banir o número (ver decisão D27).
  * Nada aqui é simulado: sem configuração, as funções recusam com "WhatsApp não configurado".
  */
 export class ErroWhatsApp extends Error {
@@ -17,47 +19,48 @@ export class ErroWhatsApp extends Error {
 export type Provedor = 'meta' | 'evolution';
 
 export async function configWhatsapp() {
-  const [provedor, phoneId, wabaId, token, appSecret, verifyToken, versao, evoUrl, evoInstancia, evoApikey, evoWebhookToken] = await Promise.all([
-    cfg('whatsapp.provedor'), cfg('whatsapp.phone_number_id'), cfg('whatsapp.waba_id'), cfg('whatsapp.token'), cfg('whatsapp.app_secret'),
+  const [phoneId, wabaId, token, appSecret, verifyToken, versao, evoUrl, evoInstancia, evoApikey, evoWebhookToken] = await Promise.all([
+    cfg('whatsapp.phone_number_id'), cfg('whatsapp.waba_id'), cfg('whatsapp.token'), cfg('whatsapp.app_secret'),
     cfg('whatsapp.verify_token'), cfg('whatsapp.versao_api'), cfg('whatsapp.evolution_url'), cfg('whatsapp.evolution_instancia'),
     cfg('whatsapp.evolution_apikey'), cfg('whatsapp.evolution_webhook_token'),
   ]);
   return {
-    provedor: (provedor === 'evolution' ? 'evolution' : 'meta') as Provedor,
+    // D40: só Evolution por enquanto. A configuração "whatsapp.provedor" é ignorada.
+    provedor: 'evolution' as Provedor,
     meta: { phoneId, wabaId, token, appSecret, verifyToken, versao: versao || 'v26.0' },
     evolution: { url: evoUrl?.replace(/\/+$/, '') ?? null, instancia: evoInstancia, apikey: evoApikey, webhookToken: evoWebhookToken },
   };
 }
 
-/** O que ainda falta configurar no provedor escolhido (mostrado na tela, como pede o prompt). */
+/** http:// só é aceito para a Evolution rodando na própria VPS (127.0.0.1 / localhost); fora dela, só https://. */
+export function urlEvolutionValida(url: string | null | undefined): boolean {
+  if (!url) return false;
+  try {
+    const u = new URL(url);
+    if (u.protocol === 'https:') return true;
+    return u.protocol === 'http:' && ['127.0.0.1', 'localhost', '[::1]'].includes(u.hostname);
+  } catch {
+    return false;
+  }
+}
+
+/** O que ainda falta configurar (mostrado na tela). O token do webhook é criado sozinho ao conectar. */
 export async function faltandoWhatsapp(): Promise<string[]> {
   const c = await configWhatsapp();
   const f: string[] = [];
-  if (c.provedor === 'meta') {
-    if (!c.meta.phoneId) f.push('ID do número (Phone Number ID)');
-    if (!c.meta.token) f.push('Token de acesso permanente');
-    if (!c.meta.appSecret) f.push('App Secret');
-    if (!c.meta.verifyToken) f.push('Token de verificação do webhook');
-    if (!(await cfg('whatsapp.modelo_codigo'))) f.push('Modelo do código de acesso (aprovado na Meta)');
-    if (!(await cfg('whatsapp.modelo_entrevista'))) f.push('Modelo de confirmação de entrevista (aprovado na Meta)');
-  } else {
-    if (!c.evolution.url) f.push('Endereço do servidor da Evolution API');
-    if (!c.evolution.url?.startsWith('https://')) f.push('O endereço da Evolution API precisa começar com https://');
-    if (!c.evolution.instancia) f.push('Nome da instância');
-    if (!c.evolution.apikey) f.push('Chave da API (apikey)');
-    if (!c.evolution.webhookToken) f.push('Token do webhook');
-  }
-  return [...new Set(f)];
+  if (!c.evolution.url) f.push('Endereço do servidor da Evolution API');
+  else if (!urlEvolutionValida(c.evolution.url)) f.push('O endereço da Evolution API precisa começar com https:// (http:// só para 127.0.0.1, na mesma VPS)');
+  if (!c.evolution.instancia) f.push('Nome da instância');
+  if (!c.evolution.apikey) f.push('Chave da API (apikey)');
+  return f;
 }
 
-/** Configurado = dá para enviar e receber com o provedor escolhido. Os modelos (Meta) são conferidos no envio. */
+/** Configurado = os dados da Evolution estão preenchidos. Se o celular está conectado, quem diz é estadoConexao(). */
 export async function whatsappConfigurado(): Promise<boolean> {
-  const c = await configWhatsapp();
-  if (c.provedor === 'meta') return Boolean(c.meta.phoneId && c.meta.token && c.meta.appSecret && c.meta.verifyToken);
-  return Boolean(c.evolution.url?.startsWith('https://') && c.evolution.instancia && c.evolution.apikey && c.evolution.webhookToken);
+  return (await faltandoWhatsapp()).length === 0;
 }
 
-async function http<T>(url: string, metodo: 'GET' | 'POST', cabecalhos: Record<string, string>, corpo?: unknown): Promise<T> {
+async function http<T>(url: string, metodo: 'GET' | 'POST' | 'DELETE', cabecalhos: Record<string, string>, corpo?: unknown): Promise<T> {
   let resp: Response;
   try {
     resp = await fetch(url, {
@@ -87,10 +90,10 @@ async function graph<T>(metodo: 'GET' | 'POST', caminho: string, corpo?: unknown
   return http<T>(`https://graph.facebook.com/${c.meta.versao}/${caminho}`, metodo, { Authorization: `Bearer ${c.meta.token}` }, corpo);
 }
 
-async function evolution<T>(metodo: 'GET' | 'POST', caminho: string, corpo?: unknown): Promise<T> {
+async function evolution<T>(metodo: 'GET' | 'POST' | 'DELETE', caminho: string, corpo?: unknown): Promise<T> {
   const c = await configWhatsapp();
   if (!c.evolution.url || !c.evolution.apikey || !c.evolution.instancia) throw new ErroWhatsApp('WhatsApp não configurado.', false, 'nao_configurado');
-  if (!c.evolution.url.startsWith('https://')) throw new ErroWhatsApp('O endereço da Evolution API precisa usar https://.', false);
+  if (!urlEvolutionValida(c.evolution.url)) throw new ErroWhatsApp('O endereço da Evolution API precisa usar https:// (http:// só para 127.0.0.1).', false);
   return http<T>(`${c.evolution.url}/${caminho.replace('{instancia}', encodeURIComponent(c.evolution.instancia))}`, metodo, { apikey: c.evolution.apikey }, corpo);
 }
 
@@ -149,7 +152,7 @@ export async function testarConexao(): Promise<string> {
   if (c.provedor === 'evolution') {
     const r = await evolution<{ instance?: { state?: string } }>('GET', 'instance/connectionState/{instancia}');
     const estado = r.instance?.state ?? 'desconhecido';
-    if (estado !== 'open') throw new ErroWhatsApp(`A instância respondeu, mas não está conectada ao WhatsApp (estado: ${estado}). Leia o QR Code no painel da Evolution.`, false);
+    if (estado !== 'open') throw new ErroWhatsApp(`A instância respondeu, mas o celular não está conectado (estado: ${estado}). Conecte pela tela "Conexão do WhatsApp".`, false);
     return `Instância "${c.evolution.instancia}" conectada ao WhatsApp.`;
   }
   if (!c.meta.phoneId) throw new ErroWhatsApp('Informe o ID do número.', false);
@@ -190,4 +193,82 @@ export function tokenEvolutionValido(recebido: string | undefined, esperado: str
   const a = Buffer.from(recebido);
   const b = Buffer.from(esperado);
   return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
+
+// ═══════════════════════ Conexão da instância (tela "Conexão do WhatsApp") ═══════════════════════
+
+export type EstadoConexao = 'conectado' | 'conectando' | 'desconectado' | 'sem_instancia';
+export interface Conexao { estado: EstadoConexao; numero: string | null; nomePerfil: string | null; instancia: string | null }
+
+const EVENTOS_WEBHOOK = ['MESSAGES_UPSERT', 'MESSAGES_UPDATE'];
+
+/** O token secreto do webhook é criado aqui, uma vez, e nunca aparece na tela. */
+async function garantirTokenWebhook(usuarioId: string): Promise<string> {
+  const atual = (await configWhatsapp()).evolution.webhookToken;
+  if (atual) return atual;
+  const novo = crypto.randomBytes(32).toString('hex');
+  await gravarConfig(pool, 'whatsapp.evolution_webhook_token', novo, usuarioId);
+  return novo;
+}
+
+function naoExiste(err: unknown) {
+  return err instanceof ErroWhatsApp && (err.codigo === 404 || /does not exist|não existe|not found/i.test(err.message));
+}
+
+/** Situação da instância na Evolution: conectada, esperando o QR Code, desconectada ou ainda não criada. */
+export async function estadoConexao(): Promise<Conexao> {
+  const c = await configWhatsapp();
+  const base: Conexao = { estado: 'desconectado', numero: null, nomePerfil: null, instancia: c.evolution.instancia };
+  let estado: string;
+  try {
+    const r = await evolution<{ instance?: { state?: string } }>('GET', 'instance/connectionState/{instancia}');
+    estado = r.instance?.state ?? 'close';
+  } catch (err) {
+    if (naoExiste(err)) return { ...base, estado: 'sem_instancia' };
+    throw err;
+  }
+  if (estado !== 'open') return { ...base, estado: estado === 'connecting' ? 'conectando' : 'desconectado' };
+  // Número e nome do perfil conectados (informativo: se a versão da Evolution não devolver, fica em branco).
+  try {
+    const lista = await evolution<Array<{ name?: string; ownerJid?: string; profileName?: string; instance?: { instanceName?: string; owner?: string; profileName?: string } }>>(
+      'GET', `instance/fetchInstances?instanceName=${encodeURIComponent(c.evolution.instancia ?? '')}`);
+    const i = (Array.isArray(lista) ? lista : []).find((x) => (x.name ?? x.instance?.instanceName) === c.evolution.instancia);
+    const jid = i?.ownerJid ?? i?.instance?.owner ?? null;
+    return { ...base, estado: 'conectado', numero: jid ? jid.split('@')[0].replace(/\D/g, '') || null : null, nomePerfil: i?.profileName ?? i?.instance?.profileName ?? null };
+  } catch {
+    return { ...base, estado: 'conectado' };
+  }
+}
+
+/**
+ * Prepara a conexão: cria a instância se ainda não existir, aponta o webhook dela para o aprovaRH
+ * (com o token secreto) e devolve o QR Code. Se já estiver conectada, só confere o webhook.
+ */
+export async function conectar(usuarioId: string): Promise<{ estado: EstadoConexao; qrcode: string | null; codigoPareamento: string | null; criada: boolean }> {
+  const token = await garantirTokenWebhook(usuarioId);
+  const c = await configWhatsapp();
+  let criada = false;
+  let atual = await estadoConexao();
+  if (atual.estado === 'sem_instancia') {
+    try {
+      await evolution('POST', 'instance/create', { instanceName: c.evolution.instancia, integration: 'WHATSAPP-BAILEYS', qrcode: true });
+      criada = true;
+    } catch (err) {
+      throw new ErroWhatsApp(`A instância "${c.evolution.instancia}" não existe e não foi possível criá-la (${(err as Error).message}). Crie-a no painel da Evolution ou use a chave global (apikey) da Evolution.`, false);
+    }
+  }
+  const url = `${env.APP_URL.replace(/\/+$/, '')}/api/webhooks/evolution`;
+  await evolution('POST', 'webhook/set/{instancia}', {
+    webhook: { enabled: true, url, byEvents: false, base64: false, headers: { 'x-aprovarh-token': token }, events: EVENTOS_WEBHOOK },
+  });
+  if (!criada) atual = await estadoConexao();
+  if (atual.estado === 'conectado') return { estado: 'conectado', qrcode: null, codigoPareamento: null, criada };
+  const r = await evolution<{ base64?: string; code?: string; pairingCode?: string | null; qrcode?: { base64?: string } }>('GET', 'instance/connect/{instancia}');
+  const qrcode = r.base64 ?? r.qrcode?.base64 ?? null;
+  return { estado: 'conectando', qrcode: qrcode && qrcode.startsWith('data:image/') ? qrcode : null, codigoPareamento: r.pairingCode ?? null, criada };
+}
+
+/** Desconecta o celular da instância (o número sai do WhatsApp Web). A instância continua existindo. */
+export async function desconectar(): Promise<void> {
+  await evolution('DELETE', 'instance/logout/{instancia}');
 }

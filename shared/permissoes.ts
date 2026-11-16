@@ -30,6 +30,7 @@ export const PERMISSOES = {
   'auditoria.ver': { grupo: 'Administração', nome: 'Ver e exportar a auditoria' },
   'sistema.ver': { grupo: 'Administração', nome: 'Ver a tela Sistema' },
   'api.gerenciar': { grupo: 'Administração', nome: 'Criar chaves de API e webhooks' },
+  'whatsapp.conectar': { grupo: 'Administração', nome: 'Conectar e desconectar o WhatsApp (QR Code)' },
 } as const;
 
 export type Permissao = keyof typeof PERMISSOES;

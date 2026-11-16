@@ -1,3 +1,4 @@
+import { exigirLogin } from '../../middleware/auth.ts';
 import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
 import multer from 'multer';
@@ -126,4 +127,14 @@ publicoRouter.post('/candidaturas', limiteEnvio, h(async (req, res) => {
   }
   // Mesma resposta para CPF novo ou repetido.
   res.status(201).json({ ok: true });
+}));
+
+/** Para a equipe (logada): por que o formulário público está fechado. O candidato nunca vê o motivo. */
+export const formularioSituacaoRouter = Router();
+formularioSituacaoRouter.get('/', exigirLogin(), h(async (_req, res) => {
+  const [aviso, unidades] = await Promise.all([avisoAtual(), unidadesAbertas()]);
+  const falta: string[] = [];
+  if (!aviso) falta.push('aviso');
+  if (!unidades.length) falta.push('unidade');
+  res.json({ aberto: falta.length === 0, falta });
 }));
