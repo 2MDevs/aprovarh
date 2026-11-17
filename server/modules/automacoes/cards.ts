@@ -264,8 +264,13 @@ export async function executarCard(no: No, ctx: Contexto, cand: CandidatoAtual, 
       return { resumo: `Aguardando até ${br(partesEmBrasilia(ate).data)} às ${p('hora')}.`, esperar: { tipo: 'tempo', ate, saida: 'proximo' } };
     }
     case 'tempo.aguardar_resposta': {
-      const horas = Number(p('prazoHoras'));
-      return { resumo: `Aguardando resposta por até ${horas} h.`, esperar: { tipo: 'resposta', prazo: new Date(cfg.agora.getTime() + horas * 3_600_000), canal: p<string>('canal') ?? 'qualquer' }, patch: { resposta: null } };
+      const qtd = Number(p('prazoHoras'));
+      const minutos = p<string>('unidadePrazo') === 'minutos';
+      return {
+        resumo: `Aguardando resposta por até ${qtd} ${minutos ? 'min' : 'h'}.`,
+        esperar: { tipo: 'resposta', prazo: new Date(cfg.agora.getTime() + qtd * (minutos ? 60_000 : 3_600_000)), canal: p<string>('canal') ?? 'qualquer' },
+        patch: { resposta: null },
+      };
     }
     case 'tempo.expirar_autorizacao': {
       if (ctx.retomando === no.id) {
