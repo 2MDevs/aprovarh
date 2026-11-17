@@ -27,7 +27,7 @@ export function descreverNo(no: No, o: Opcoes | null): string {
     case 'acao.notificar_gestora': return String(p('titulo') ?? '');
     case 'acao.atualizar_entrevista': return CARD[no.tipo].parametros[0].opcoes?.find((x) => x.valor === p('acao'))?.rotulo ?? '';
     case 'tempo.aguardar_periodo': return `${p('quantidade')} ${p('unidade')}`;
-    case 'tempo.aguardar_resposta': return `Até ${p('prazoHoras')} h`;
+    case 'tempo.aguardar_resposta': return `Até ${p('prazoHoras')} ${p('unidadePrazo') === 'minutos' ? 'min' : 'h'}`;
     case 'tempo.aguardar_horario': return `Até ${p('hora') ?? '--:--'}`;
     case 'tempo.repetir': return `Até ${p('limite')} vez(es)`;
     case 'tempo.expirar_autorizacao': return `Depois de ${p('horas')} h`;

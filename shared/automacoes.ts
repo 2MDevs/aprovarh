@@ -194,7 +194,11 @@ export const CARDS: DefCard[] = [
     parametros: [{ chave: 'hora', rotulo: 'Horário (Brasília)', tipo: 'hora', obrigatorio: true }] },
   { tipo: 'tempo.aguardar_resposta', categoria: 'tempo', nome: 'Aguardar resposta', descricao: 'Espera o candidato escrever. Enquanto espera, as respostas automáticas da etapa 7 ficam caladas.',
     produzNaSaida: { respondeu: ['resposta'] }, saidas: [{ id: 'respondeu', rotulo: 'Respondeu' }, { id: 'tempo_esgotado', rotulo: 'Tempo esgotado' }],
-    parametros: [{ chave: 'prazoHoras', rotulo: 'Esperar até (horas)', tipo: 'numero', obrigatorio: true, min: 1, max: 336, padrao: 24 }, CANAL] },
+    parametros: [
+      { chave: 'prazoHoras', rotulo: 'Esperar até', tipo: 'numero', obrigatorio: true, min: 1, max: 336, padrao: 24 },
+      { chave: 'unidadePrazo', rotulo: 'Unidade', tipo: 'selecao', padrao: 'horas', opcoes: [{ valor: 'minutos', rotulo: 'minutos' }, { valor: 'horas', rotulo: 'horas' }] },
+      CANAL,
+    ] },
   { tipo: 'tempo.executar_em_dia', categoria: 'tempo', nome: 'Executar em determinado dia', descricao: 'Espera o próximo dia da semana escolhido, no horário escolhido.', saidas: PROXIMO,
     parametros: [
       { chave: 'dias', rotulo: 'Dias da semana', tipo: 'diasSemana', obrigatorio: true, padrao: [1] },
