@@ -130,6 +130,13 @@ export const CARDS: DefCard[] = [
     parametros: [{ chave: 'unidades', rotulo: 'Unidades', tipo: 'unidades', obrigatorio: true }] },
   { tipo: 'condicao.status', categoria: 'condicao', nome: 'Verificar status', descricao: 'O candidato está em um destes status?', saidas: SIM_NAO,
     parametros: [{ chave: 'status', rotulo: 'Status', tipo: 'statusVarios', obrigatorio: true }] },
+  { tipo: 'condicao.enviou_mensagem', categoria: 'condicao', nome: 'Candidato enviou mensagem?', descricao: 'O candidato já escreveu (pelo WhatsApp ou pelo portal)? Útil logo depois da candidatura, antes de esperar.',
+    saidas: SIM_NAO, parametros: [
+      CANAL,
+      { chave: 'desde', rotulo: 'Contar mensagens', tipo: 'selecao', padrao: 'candidatura', opcoes: [
+        { valor: 'candidatura', rotulo: 'desde a última candidatura' }, { valor: 'sempre', rotulo: 'de qualquer época' },
+      ] },
+    ] },
   { tipo: 'condicao.tag', categoria: 'condicao', nome: 'Verificar tag', descricao: 'O candidato tem esta tag?', saidas: SIM_NAO,
     parametros: [{ chave: 'tag', rotulo: 'Tag', tipo: 'tag', obrigatorio: true }] },
   { tipo: 'condicao.data', categoria: 'condicao', nome: 'Verificar data', descricao: 'A resposta do candidato traz uma data válida dentro do período oferecido?',
