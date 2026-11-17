@@ -49,7 +49,7 @@ export async function notificarGestoras(db: PoolClient, unidadeId: string, titul
  * Um envio repetido nunca altera nome, telefone ou unidade da ficha (ver migration 002).
  * O candidato recebe sempre a mesma resposta, para não revelar se o CPF já estava cadastrado.
  */
-export async function registrarCandidatura(c: NovaCandidatura): Promise<{ tipo: 'nova' | 'repetida' | 'reaberta'; codigo: string }> {
+export async function registrarCandidatura(c: NovaCandidatura): Promise<{ tipo: 'nova' | 'repetida' | 'reaberta'; codigo: string; candidatoId: string; telefoneDiferente: boolean }> {
   const gravados: ArquivoGuardado[] = [];
   const cpfHash = hmac(`cpf:${c.cpf}`);
   try {
@@ -164,7 +164,7 @@ export async function registrarCandidatura(c: NovaCandidatura): Promise<{ tipo: 
         ip: c.ip,
       }, db);
 
-      return { tipo, codigo };
+      return { tipo, codigo, candidatoId, telefoneDiferente };
     });
   } catch (err) {
     await descartarArquivos(gravados); // a transação foi desfeita: os arquivos também saem do disco

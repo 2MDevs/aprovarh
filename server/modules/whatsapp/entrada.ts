@@ -78,6 +78,21 @@ async function processarMensagem(db: PoolClient, e: Extract<EventoEntrada, { tip
     );
     cand = c.rows[0];
   }
+  if (!cand) {
+    // Protocolo do botão "Confirmar pelo WhatsApp" (D44): reconhece quem escreveu quando o WhatsApp não mandou o telefone.
+    // Se mandou um telefone diferente do da ficha, não vincula (a mensagem vai para "não identificados").
+    const protocolo = e.texto.toUpperCase().match(/\bRH-[A-Z0-9]{6}\b/)?.[0];
+    if (protocolo && !e.de) {
+      const c = await db.query<Cand>(
+        `UPDATE candidatura_protocolos p SET usado_em = COALESCE(p.usado_em, now())
+           FROM candidatos c
+          WHERE p.protocolo = $1 AND c.id = p.candidato_id AND c.excluido_em IS NULL AND p.criado_em > now() - interval '30 days'
+          RETURNING c.id, c.unidade_id, c.codigo, c.nome`,
+        [protocolo],
+      );
+      cand = c.rows[0];
+    }
+  }
   if (cand && e.lid) await vincularLid(db, e.lid, cand.id);
   if (!cand && !e.de) {
     // Chegou só o código do WhatsApp, sem telefone, e ele ainda não foi vinculado a ninguém: não dá para saber de quem é.

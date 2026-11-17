@@ -1,10 +1,12 @@
+import crypto from 'node:crypto';
+import { pool } from '../../db/pool.ts';
 import { exigirLogin } from '../../middleware/auth.ts';
 import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
 import multer from 'multer';
 import { z } from 'zod';
 import { auditar } from '../../core/audit.ts';
-import { cfgNumero } from '../../core/settings.ts';
+import { cfg, cfgNumero } from '../../core/settings.ts';
 import { detectarTipo, type TipoAceito } from '../../lib/arquivos.ts';
 import { descreverDispositivo } from '../../lib/device.ts';
 import { capitalizarNome, cpfValido, nomeValido, normalizarTelefone, soDigitos } from '../../lib/documentos.ts';
@@ -32,6 +34,23 @@ const limiteEnvio = rateLimit({
   legacyHeaders: false,
   message: { erro: 'Muitos envios a partir desta conexão. Tente de novo em uma hora.', codigo: 'muitas_tentativas' },
 });
+
+/** Protocolo curto e sem letras parecidas (0/O, 1/I). */
+function novoProtocolo() {
+  const letras = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  return 'RH-' + Array.from(crypto.randomBytes(6), (b: number) => letras[b % letras.length]).join('');
+}
+
+/**
+ * Botão "Confirmar pelo WhatsApp" (decisão D44): abre a conversa com o número do recrutamento com um texto pronto.
+ * Assim é o candidato quem escreve primeiro, o que diminui o risco de bloqueio do número.
+ */
+async function linkWhatsapp(protocolo: string): Promise<string | null> {
+  const numero = (await cfg('whatsapp.numero_recrutamento'))?.replace(/\D/g, '');
+  if (!numero || numero.length < 10) return null;
+  const texto = `Olá! Acabei de enviar minha candidatura para a Hummm! Pizzas. Protocolo: ${protocolo}`;
+  return `https://wa.me/${numero}?text=${encodeURIComponent(texto)}`;
+}
 
 const MENSAGEM_FECHADO = 'O cadastro de candidaturas está temporariamente indisponível. Tente novamente mais tarde.';
 
@@ -86,7 +105,7 @@ publicoRouter.post('/candidaturas', limiteEnvio, h(async (req, res) => {
   // Robô preencheu o campo invisível: responde como sucesso e não grava nada.
   if (body.site) {
     await auditar({ acao: 'candidatura.robo', resultado: 'negado', ator: { usuarioNome: 'Formulário público de candidatura' }, ip, dispositivo: descreverDispositivo(req.get('user-agent')).nome });
-    return res.status(201).json({ ok: true });
+    return res.status(201).json({ ok: true, whatsapp: await linkWhatsapp(novoProtocolo()) });
   }
   if (body.avisoVersao !== aviso.versao) {
     throw badRequest('O aviso de privacidade foi atualizado. Recarregue a página, leia e aceite de novo.', 'aviso_mudou');
@@ -109,8 +128,9 @@ publicoRouter.post('/candidaturas', limiteEnvio, h(async (req, res) => {
   if (!tipoFoto || !FOTO.includes(tipoFoto)) throw badRequest('A foto precisa ser uma imagem JPG ou PNG.', 'foto_tipo');
   if (ft.size > limiteFoto * 1024 * 1024) throw badRequest(`A foto pode ter no máximo ${limiteFoto} MB.`, 'foto_grande');
 
+  let protocolo = novoProtocolo();
   try {
-    await registrarCandidatura({
+    const r = await registrarCandidatura({
       nome: capitalizarNome(body.nome),
       sobrenome: capitalizarNome(body.sobrenome),
       cpf: soDigitos(body.cpf),
@@ -121,12 +141,18 @@ publicoRouter.post('/candidaturas', limiteEnvio, h(async (req, res) => {
       avisoVersao: aviso.versao,
       ip,
     });
+    // O protocolo só vale para reconhecer quem escreveu se o telefone do envio é o mesmo da ficha.
+    if (!r.telefoneDiferente) {
+      await pool.query('INSERT INTO candidatura_protocolos (protocolo, candidato_id) VALUES ($1, $2) ON CONFLICT DO NOTHING', [protocolo, r.candidatoId]);
+    } else {
+      protocolo = novoProtocolo();
+    }
   } catch (err) {
     if ((err as Error).message === 'UNIDADE_INVALIDA') throw badRequest('Essa unidade não está recebendo candidaturas. Escolha outra.', 'unidade_invalida');
     throw err;
   }
   // Mesma resposta para CPF novo ou repetido.
-  res.status(201).json({ ok: true });
+  res.status(201).json({ ok: true, whatsapp: await linkWhatsapp(protocolo) });
 }));
 
 /** Para a equipe (logada): por que o formulário público está fechado. O candidato nunca vê o motivo. */
