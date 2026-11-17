@@ -1,4 +1,4 @@
-import { CheckCircle2, FileText, ImagePlus, Loader2, Send, Upload } from 'lucide-react';
+import { CheckCircle2, FileText, ImagePlus, Loader2, Send, Upload, MessageCircle } from 'lucide-react';
 import { useEffect, useId, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { LogoHummm } from '../../components/Marca';
 import { Aviso, Botao, Campo, Modal } from '../../components/ui';
@@ -25,7 +25,7 @@ const mascaraTelefone = (v: string) => {
 export function Candidatura() {
   const [form, setForm] = useState<Formulario | null>(null);
   const [erroCarga, setErroCarga] = useState(false);
-  const [enviado, setEnviado] = useState(false);
+  const [enviado, setEnviado] = useState<{ whatsapp: string | null } | null>(null);
 
   useEffect(() => {
     fetch('/api/publico/formulario').then((r) => (r.ok ? r.json() : Promise.reject())).then(setForm).catch(() => setErroCarga(true));
@@ -47,11 +47,11 @@ export function Candidatura() {
         ) : !form ? (
           <p className="flex items-center justify-center gap-2 py-16 text-suave"><Loader2 className="size-5 animate-spin" /> Carregando...</p>
         ) : enviado ? (
-          <Confirmacao />
+          <Confirmacao whatsapp={enviado.whatsapp} />
         ) : !form.aberto ? (
           <Aviso tipo="atencao">{form.mensagem}</Aviso>
         ) : (
-          <FormularioCandidatura form={form} onEnviado={() => setEnviado(true)} />
+          <FormularioCandidatura form={form} onEnviado={(whatsapp) => setEnviado({ whatsapp })} />
         )}
       </main>
     </div>
@@ -59,21 +59,34 @@ export function Candidatura() {
 }
 
 /** Mensagem pedida no prompt geral (seção 3). Não dá acesso ao portal. */
-function Confirmacao() {
+function Confirmacao({ whatsapp }: { whatsapp: string | null }) {
   useEffect(() => window.scrollTo({ top: 0 }), []);
   return (
     <div className="cartao p-6 text-center sm:p-10" role="status">
       <CheckCircle2 className="mx-auto size-14 text-verde" aria-hidden />
       <h2 className="mt-4 text-2xl font-bold">Sua candidatura foi enviada com sucesso!</h2>
-      <p className="mx-auto mt-4 max-w-md text-[15px] leading-relaxed text-suave">
-        Nossa equipe de RH analisará seu cadastro. Caso seu perfil avance no processo seletivo, entraremos em contato pelo WhatsApp para informar os próximos passos.
-      </p>
-      <p className="mt-4 font-semibold">Agradecemos seu interesse em fazer parte da Hummm! Pizzas.</p>
+      {whatsapp ? (
+        <>
+          <p className="mx-auto mt-4 max-w-md text-[15px] leading-relaxed text-suave">
+            Falta só um passo: confirme pelo WhatsApp. É por lá que nossa equipe de RH vai falar com você sobre os próximos passos.
+          </p>
+          <a href={whatsapp} target="_blank" rel="noopener noreferrer"
+            className="mt-6 inline-flex min-h-14 w-full max-w-sm items-center justify-center gap-2 rounded-full bg-[#0E7C61] px-6 text-base font-semibold text-white shadow-sm hover:bg-[#0B6650] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#128C7E]">
+            <MessageCircle className="size-5" aria-hidden /> Confirmar pelo WhatsApp
+          </a>
+          <p className="mx-auto mt-3 max-w-sm text-[13px] text-suave">A conversa abre com uma mensagem pronta. É só tocar em enviar.</p>
+        </>
+      ) : (
+        <p className="mx-auto mt-4 max-w-md text-[15px] leading-relaxed text-suave">
+          Nossa equipe de RH analisará seu cadastro. Caso seu perfil avance no processo seletivo, entraremos em contato pelo WhatsApp para informar os próximos passos.
+        </p>
+      )}
+      <p className="mt-6 font-semibold">Agradecemos seu interesse em fazer parte da Hummm! Pizzas.</p>
     </div>
   );
 }
 
-function FormularioCandidatura({ form, onEnviado }: { form: Formulario; onEnviado: () => void }) {
+function FormularioCandidatura({ form, onEnviado }: { form: Formulario; onEnviado: (whatsapp: string | null) => void }) {
   const [nome, setNome] = useState('');
   const [sobrenome, setSobrenome] = useState('');
   const [cpf, setCpf] = useState('');
@@ -118,7 +131,8 @@ function FormularioCandidatura({ form, onEnviado }: { form: Formulario; onEnviad
         const j = await r.json().catch(() => null);
         return mostrarErro(j?.erro || 'Não foi possível enviar. Tente de novo.');
       }
-      onEnviado();
+      const j = await r.json().catch(() => null);
+      onEnviado(typeof j?.whatsapp === 'string' && j.whatsapp.startsWith('https://wa.me/') ? j.whatsapp : null);
     } catch {
       mostrarErro('Sem conexão. Confira sua internet e tente de novo.');
     } finally {

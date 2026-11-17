@@ -38,6 +38,7 @@ export const DEFINICOES = {
   'privacidade.aviso': { grupo: 'privacidade', rotulo: 'Texto do aviso de privacidade', tipo: 'textoLongo' },
   // WhatsApp: por enquanto só a Evolution API, instância do WhatsApp Web conectada por QR Code (decisão D40). Número: A definir.
   'whatsapp.evolution_url': { grupo: 'whatsapp', rotulo: 'Evolution: endereço do servidor (https://... ou, na mesma VPS, http://127.0.0.1:porta)', tipo: 'texto', env: 'EVOLUTION_URL' },
+  'whatsapp.numero_recrutamento': { grupo: 'whatsapp', rotulo: 'Número do WhatsApp do recrutamento (preenchido sozinho ao conectar)', tipo: 'texto', env: 'WHATSAPP_NUMERO' },
   'whatsapp.evolution_instancia': { grupo: 'whatsapp', rotulo: 'Evolution: nome da instância (criada sozinha ao conectar)', tipo: 'texto', env: 'EVOLUTION_INSTANCE', padrao: 'aprovarh' },
   'whatsapp.evolution_apikey': { grupo: 'whatsapp', rotulo: 'Evolution: chave da API (apikey)', tipo: 'segredo', env: 'EVOLUTION_APIKEY' },
   'whatsapp.evolution_webhook_token': { grupo: 'whatsapp', rotulo: 'Evolution: token do webhook (criado sozinho ao conectar)', tipo: 'segredo', env: 'EVOLUTION_WEBHOOK_TOKEN' },
@@ -143,7 +144,7 @@ export async function configuracoesDoGrupo(grupo: Definicao['grupo']) {
 }
 
 /** Grava (ou limpa, com valor vazio/null) uma configuração. Valida tipo e limites. */
-export async function gravarConfig(db: Db, chave: ChaveConfig, valor: string | null, usuarioId: string) {
+export async function gravarConfig(db: Db, chave: ChaveConfig, valor: string | null, usuarioId: string | null) {
   const def: Definicao = DEFINICOES[chave];
   if (valor !== null && valor !== '') {
     if (def.tipo === 'numero') {

@@ -234,6 +234,9 @@ export async function estadoConexao(): Promise<Conexao> {
       'GET', `instance/fetchInstances?instanceName=${encodeURIComponent(c.evolution.instancia ?? '')}`);
     const i = (Array.isArray(lista) ? lista : []).find((x) => (x.name ?? x.instance?.instanceName) === c.evolution.instancia);
     const jid = i?.ownerJid ?? i?.instance?.owner ?? null;
+    const numero = jid ? jid.split('@')[0].replace(/\D/g, '') : '';
+    // Guarda o número conectado: é o destino do botão "Confirmar pelo WhatsApp" do formulário.
+    if (numero && numero !== (await cfg('whatsapp.numero_recrutamento'))) await gravarConfig(pool, 'whatsapp.numero_recrutamento', numero, null).catch(() => {});
     return { ...base, estado: 'conectado', numero: jid ? jid.split('@')[0].replace(/\D/g, '') || null : null, nomePerfil: i?.profileName ?? i?.instance?.profileName ?? null };
   } catch {
     return { ...base, estado: 'conectado' };
