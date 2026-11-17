@@ -171,6 +171,15 @@ export function efeitosReais(db: PoolClient, cand: CandidatoAtual, ex: InfoExecu
     },
     nomeStatus: (id) => nomeDe(db, 'status', id),
     nomeTag: (id) => nomeDe(db, 'tags', id),
+    async mensagensRecebidas(canal, desde) {
+      const r = await db.query<{ n: number }>(
+        `SELECT count(*)::int AS n FROM mensagens m JOIN conversas cv ON cv.id = m.conversa_id JOIN candidatos c ON c.id = cv.candidato_id
+          WHERE cv.candidato_id = $1 AND m.sentido = 'entrada' AND m.autor_tipo = 'candidato'
+            AND ($2::text = 'qualquer' OR m.canal = $2::text) AND ($3::text = 'sempre' OR m.criado_em >= c.candidatura_em)`,
+        [cand.id, canal, desde],
+      );
+      return r.rows[0]?.n ?? 0;
+    },
   };
 }
 

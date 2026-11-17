@@ -67,6 +67,8 @@ export interface Efeitos {
   horarios(de: string, ate: string): Promise<HorarioLivre[]>;
   nomeStatus(id: string): Promise<string>;
   nomeTag(id: string): Promise<string>;
+  /** Quantas mensagens o candidato escreveu (somente leitura). */
+  mensagensRecebidas(canal: string, desde: 'candidatura' | 'sempre'): Promise<number>;
 }
 
 export interface Config { sim: string[]; nao: string[]; link: string; agora: Date }
@@ -141,6 +143,12 @@ export async function executarCard(no: No, ctx: Contexto, cand: CandidatoAtual, 
     case 'condicao.status': {
       const ok = (p<string[]>('status') ?? []).includes(cand.statusId);
       return { saida: ok ? 'sim' : 'nao', resumo: `Status "${await ef.nomeStatus(cand.statusId)}"${ok ? '' : ' não'} está na lista.` };
+    }
+    case 'condicao.enviou_mensagem': {
+      const canal = p<string>('canal') ?? 'qualquer';
+      const n = await ef.mensagensRecebidas(canal, p<string>('desde') === 'sempre' ? 'sempre' : 'candidatura');
+      const onde = canal === 'whatsapp' ? ' pelo WhatsApp' : canal === 'portal' ? ' pelo portal' : '';
+      return { saida: n > 0 ? 'sim' : 'nao', resumo: n > 0 ? `O candidato já enviou ${n} mensagem(ns)${onde}.` : `O candidato ainda não enviou mensagem${onde}.` };
     }
     case 'condicao.tag': {
       const tag = p<string>('tag');
@@ -367,11 +375,13 @@ export async function simular(f: Fluxo, cand: CandidatoAtual, ctx0: Contexto, ef
  */
 export function efeitosDeTeste(
   cand: CandidatoAtual,
-  leitura: { horarios: Efeitos['horarios']; nomeStatus: Efeitos['nomeStatus']; nomeTag: Efeitos['nomeTag'] },
+  leitura: { horarios: Efeitos['horarios']; nomeStatus: Efeitos['nomeStatus']; nomeTag: Efeitos['nomeTag']; mensagensRecebidas?: Efeitos['mensagensRecebidas'] },
   opcoes: { janelaAberta: boolean; provedor: 'meta' | 'evolution' },
 ): Efeitos {
   return {
     modo: 'teste',
+    // No teste não há candidato de verdade: conta como "ainda não escreveu" (as respostas simuladas vêm depois).
+    mensagensRecebidas: async () => 0,
     ...leitura,
     async whatsappTexto(_texto, seFechada) {
       if (opcoes.provedor === 'meta' && !opcoes.janelaAberta) {

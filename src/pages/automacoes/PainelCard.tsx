@@ -22,6 +22,7 @@ export function descreverNo(no: No, o: Opcoes | null): string {
     case 'gatilho.tag_adicionada': case 'condicao.tag': case 'acao.adicionar_tag': case 'acao.remover_tag': return nome(o?.tags, p('tag')) ?? '';
     case 'acao.alterar_status': return nome(o?.status, p('status')) ? `Para "${nome(o?.status, p('status'))}"` : '';
     case 'condicao.status': return varios(o?.status, p('status'));
+    case 'condicao.enviou_mensagem': return `${p('canal') === 'whatsapp' ? 'WhatsApp' : p('canal') === 'portal' ? 'Portal' : 'Qualquer canal'}, ${p('desde') === 'sempre' ? 'de qualquer época' : 'desde a candidatura'}`;
     case 'condicao.unidade': return varios(o?.unidades, p('unidades'));
     case 'acao.whatsapp_mensagem': case 'acao.chat_mensagem': return String(p('texto') ?? '');
     case 'acao.notificar_gestora': return String(p('titulo') ?? '');

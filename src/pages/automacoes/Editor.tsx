@@ -1,6 +1,6 @@
 import { CARD, gatilhoDo, validarFluxo, type Fluxo, type No, type Problema } from '@shared/automacoes';
 import {
-  AlertTriangle, ArrowLeft, CheckCircle2, ChevronDown, FlaskConical, History, Library, Pause, Pencil, Play, Redo2, Rocket, Save, Undo2, Workflow, X,
+  AlertTriangle, ArrowLeft, CheckCircle2, ChevronDown, Code2, FlaskConical, History, Library, Pause, Pencil, Play, Redo2, Rocket, Save, Undo2, Workflow, X,
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
@@ -15,6 +15,7 @@ import { SITUACAO_AUTOMACAO } from './estilo';
 import { Execucoes } from './Execucoes';
 import { grade, novoId } from './geometria';
 import { descreverNo, PainelCard } from './PainelCard';
+import { ModalCodigo } from './Codigo';
 import { ModalTeste } from './Teste';
 import type { AutomacaoDetalhe, Opcoes, Versao } from './tipos';
 
@@ -47,6 +48,7 @@ function Editor({ id }: { id: string }) {
   const [biblioteca, setBiblioteca] = useState(() => window.innerWidth >= 1024); // no celular começa fechada
   const [validacaoAberta, setValidacaoAberta] = useState(false);
   const [testando, setTestando] = useState(false);
+  const [codigo, setCodigo] = useState(false);
   const [detalhes, setDetalhes] = useState(false);
   const [salvando, setSalvando] = useState<'salvar' | 'publicar' | 'situacao' | null>(null);
   const [confirmarPublicar, setConfirmarPublicar] = useState(false);
@@ -239,6 +241,7 @@ function Editor({ id }: { id: string }) {
                 <Botao variante="secundario" aria-label="Salvar rascunho" icone={<Save className="size-4" />} carregando={salvando === 'salvar'} disabled={!sujo} onClick={() => void salvar()}><span className="hidden sm:inline">Salvar rascunho</span></Botao>
               </>
             )}
+            <Botao variante="secundario" aria-label="Código (IA)" title="Pedir o fluxo para uma IA e colar o código" icone={<Code2 className="size-4" />} disabled={!opcoes.dados} onClick={() => setCodigo(true)}><span className="hidden sm:inline">Código</span></Botao>
             <Botao variante="secundario" aria-label="Testar" icone={<FlaskConical className="size-4" />} disabled={!opcoes.dados || !gatilhoDo(fluxo)} onClick={() => setTestando(true)}><span className="hidden sm:inline">Testar</span></Botao>
             {podePublicar && (
               <>
@@ -315,6 +318,10 @@ function Editor({ id }: { id: string }) {
         </div>
       )}
 
+      {codigo && opcoes.dados && (
+        <ModalCodigo fluxo={fluxo} nome={info.nome} opcoes={opcoes.dados} podeEditar={podeEditar}
+          onAplicar={(f) => { mudar(f); setSelecao(null); setDestaque(null); }} onFechar={() => setCodigo(false)} />
+      )}
       {testando && opcoes.dados && (
         <ModalTeste automacaoId={id} fluxo={fluxo} opcoes={opcoes.dados} onFechar={() => setTestando(false)} onCaminho={(ids) => setDestaque(new Set(ids))} />
       )}
