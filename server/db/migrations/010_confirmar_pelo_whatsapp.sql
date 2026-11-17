@@ -45,3 +45,36 @@ FROM tags t
 WHERE lower(t.nome) = 'candidatura confirmada' AND t.ativa
   AND NOT EXISTS (SELECT 1 FROM automacoes WHERE nome = 'Confirmar candidatura pelo WhatsApp' AND excluida_em IS NULL)
 LIMIT 1;
+
+-- Plano B: se o candidato não tocar no botão em 10 minutos, o robô escreve primeiro (uma vez só, pela mesma tag).
+-- Também fica como RASCUNHO até ser publicada.
+INSERT INTO automacoes (nome, descricao, situacao, fluxo_rascunho)
+SELECT
+  'Confirmar candidatura se o candidato não escrever',
+  'Dez minutos depois da candidatura, se o candidato ainda não escreveu pelo WhatsApp (sem a tag "Candidatura confirmada"), o robô envia a confirmação primeiro.',
+  'rascunho',
+  jsonb_build_object(
+    'nos', jsonb_build_array(
+      jsonb_build_object('id', 'gatilho', 'tipo', 'gatilho.candidato_cadastrado', 'params', jsonb_build_object('incluirRepetidas', false),
+        'posicao', jsonb_build_object('x', 0, 'y', 0), 'nome', 'Nova candidatura'),
+      jsonb_build_object('id', 'espera', 'tipo', 'tempo.aguardar_periodo', 'params', jsonb_build_object('quantidade', 10, 'unidade', 'minutos'),
+        'posicao', jsonb_build_object('x', 0, 'y', 140), 'nome', 'Esperar 10 minutos'),
+      jsonb_build_object('id', 'ja_confirmou', 'tipo', 'condicao.tag', 'params', jsonb_build_object('tag', t.id::text),
+        'posicao', jsonb_build_object('x', 0, 'y', 280), 'nome', 'O candidato já escreveu?'),
+      jsonb_build_object('id', 'marcar', 'tipo', 'acao.adicionar_tag', 'params', jsonb_build_object('tag', t.id::text),
+        'posicao', jsonb_build_object('x', 180, 'y', 420), 'nome', 'Marcar como confirmada'),
+      jsonb_build_object('id', 'enviar', 'tipo', 'acao.whatsapp_mensagem', 'params', jsonb_build_object('texto',
+        E'Olá, {nome}! Recebemos sua candidatura para a unidade {unidade} da Hummm! Pizzas.\n\nNossa equipe de RH vai analisar seu cadastro e, se o seu perfil avançar, falaremos com você por aqui mesmo. Se tiver alguma dúvida, é só responder esta mensagem.\n\nObrigado pelo interesse!'),
+        'posicao', jsonb_build_object('x', 180, 'y', 560), 'nome', 'Candidatura recebida')
+    ),
+    'ligacoes', jsonb_build_array(
+      jsonb_build_object('id', 'l_gatilho_proximo', 'de', 'gatilho', 'saida', 'proximo', 'para', 'espera'),
+      jsonb_build_object('id', 'l_espera_proximo', 'de', 'espera', 'saida', 'proximo', 'para', 'ja_confirmou'),
+      jsonb_build_object('id', 'l_ja_confirmou_nao', 'de', 'ja_confirmou', 'saida', 'nao', 'para', 'marcar'),
+      jsonb_build_object('id', 'l_marcar_proximo', 'de', 'marcar', 'saida', 'proximo', 'para', 'enviar')
+    )
+  )
+FROM tags t
+WHERE lower(t.nome) = 'candidatura confirmada' AND t.ativa
+  AND NOT EXISTS (SELECT 1 FROM automacoes WHERE nome = 'Confirmar candidatura se o candidato não escrever' AND excluida_em IS NULL)
+LIMIT 1;
