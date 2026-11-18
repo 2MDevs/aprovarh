@@ -36,7 +36,7 @@ export function Candidatura() {
       <header className="bg-grafite px-5 pb-6 pt-[max(1.5rem,env(safe-area-inset-top))] text-creme">
         <div className="mx-auto flex max-w-2xl flex-col items-center gap-3 text-center">
           <LogoHummm fundo="escuro" className="h-12" />
-          <h1 className="text-2xl font-bold sm:text-3xl">Trabalhe com a gente</h1>
+          <h1 className="text-2xl font-bold sm:text-3xl">Trabalhe conosco</h1>
           <p className="text-[15px] text-creme/75">Preencha seus dados e envie seu currículo. Leva poucos minutos.</p>
         </div>
       </header>
