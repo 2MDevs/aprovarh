@@ -28,7 +28,7 @@ export function formatarTelefone(e164: string): string {
 }
 
 export const mascararTelefone = (final: string) => `(••) •••••-${final}`;
-export const mascararCpf = (final: string) => `•••.•••.•••-${final}`;
+export const mascararCpf = (final: string | null) => (final ? `•••.•••.•••-${final}` : 'Ainda não informado');
 
 /**
  * Candidato visível para a pessoa (escopo de unidade conferido no servidor).

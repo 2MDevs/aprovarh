@@ -22,14 +22,30 @@ const mascaraTelefone = (v: string) => {
   return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
 };
 
+/** Pré-cadastro feito pelo RH (link do convite pelo WhatsApp). */
+interface Convite { token: string; nome: string; sobrenome: string; unidadeId: string; telefone: string; curriculo: string | null }
+
 export function Candidatura() {
   const [form, setForm] = useState<Formulario | null>(null);
   const [erroCarga, setErroCarga] = useState(false);
   const [enviado, setEnviado] = useState<{ whatsapp: string | null } | null>(null);
+  const tokenConvite = new URLSearchParams(window.location.search).get('convite');
+  const [convite, setConvite] = useState<Convite | null>(null);
+  const [erroConvite, setErroConvite] = useState('');
 
   useEffect(() => {
     fetch('/api/publico/formulario').then((r) => (r.ok ? r.json() : Promise.reject())).then(setForm).catch(() => setErroCarga(true));
-  }, []);
+    if (tokenConvite) {
+      fetch(`/api/publico/convite/${encodeURIComponent(tokenConvite)}`)
+        .then(async (r) => {
+          const j = await r.json().catch(() => null);
+          if (!r.ok) throw new Error(j?.erro || 'Não foi possível abrir o convite.');
+          setConvite({ token: tokenConvite, ...j });
+        })
+        .catch((e: Error) => setErroConvite(e.message));
+    }
+  }, [tokenConvite]);
+  const esperandoConvite = Boolean(tokenConvite && !convite && !erroConvite);
 
   return (
     <div className="min-h-dvh bg-fundo">
@@ -37,21 +53,24 @@ export function Candidatura() {
         <div className="mx-auto flex max-w-2xl flex-col items-center gap-3 text-center">
           <LogoHummm fundo="escuro" className="h-12" />
           <h1 className="text-2xl font-bold sm:text-3xl">Trabalhe conosco</h1>
-          <p className="text-[15px] text-creme/75">Preencha seus dados e envie seu currículo. Leva poucos minutos.</p>
+          <p className="text-[15px] text-creme/75">{convite ? `Olá, ${convite.nome}! Seu currículo já está com a gente. Complete seu cadastro para conversar com o RH.` : 'Preencha seus dados e envie seu currículo. Leva poucos minutos.'}</p>
         </div>
       </header>
       <div className="faixa-marca h-1.5" aria-hidden />
       <main className="mx-auto max-w-2xl px-5 py-8 pb-[max(2rem,env(safe-area-inset-bottom))]">
         {erroCarga ? (
           <Aviso tipo="erro">Não foi possível abrir o formulário. Confira sua internet e recarregue a página.</Aviso>
-        ) : !form ? (
+        ) : !form || esperandoConvite ? (
           <p className="flex items-center justify-center gap-2 py-16 text-suave"><Loader2 className="size-5 animate-spin" /> Carregando...</p>
         ) : enviado ? (
           <Confirmacao whatsapp={enviado.whatsapp} />
         ) : !form.aberto ? (
           <Aviso tipo="atencao">{form.mensagem}</Aviso>
         ) : (
-          <FormularioCandidatura form={form} onEnviado={(whatsapp) => setEnviado({ whatsapp })} />
+          <>
+            {erroConvite && <div className="mb-6"><Aviso tipo="atencao">{erroConvite}</Aviso></div>}
+            <FormularioCandidatura form={form} convite={convite} onEnviado={(whatsapp) => setEnviado({ whatsapp })} />
+          </>
         )}
       </main>
     </div>
@@ -86,14 +105,14 @@ function Confirmacao({ whatsapp }: { whatsapp: string | null }) {
   );
 }
 
-function FormularioCandidatura({ form, onEnviado }: { form: Formulario; onEnviado: (whatsapp: string | null) => void }) {
-  const [nome, setNome] = useState('');
-  const [sobrenome, setSobrenome] = useState('');
+function FormularioCandidatura({ form, convite, onEnviado }: { form: Formulario; convite: Convite | null; onEnviado: (whatsapp: string | null) => void }) {
+  const [nome, setNome] = useState(convite?.nome ?? '');
+  const [sobrenome, setSobrenome] = useState(convite?.sobrenome ?? '');
   const [cpf, setCpf] = useState('');
   const [telefone, setTelefone] = useState('');
   // Link da loja (?unidade=<id>) já chega com a unidade escolhida.
   const pedida = new URLSearchParams(window.location.search).get('unidade');
-  const [unidadeId, setUnidadeId] = useState(form.unidades.find((u) => u.id === pedida)?.id ?? (form.unidades.length === 1 ? form.unidades[0].id : ''));
+  const [unidadeId, setUnidadeId] = useState(form.unidades.find((u) => u.id === (convite?.unidadeId ?? pedida))?.id ?? (form.unidades.length === 1 ? form.unidades[0].id : ''));
   const [curriculo, setCurriculo] = useState<File | null>(null);
   const [foto, setFoto] = useState<File | null>(null);
   const [aceite, setAceite] = useState(false);
@@ -104,8 +123,9 @@ function FormularioCandidatura({ form, onEnviado }: { form: Formulario; onEnviad
   const topo = useRef<HTMLDivElement>(null);
   const idUnidade = useId();
 
+  // A foto 3x4 é opcional. No convite, o currículo e o telefone já vieram do RH.
   const pronto = nome.trim().length >= 2 && sobrenome.trim().length >= 2 && cpf.replace(/\D/g, '').length === 11
-    && telefone.replace(/\D/g, '').length >= 10 && unidadeId && curriculo && foto && aceite;
+    && (convite || telefone.replace(/\D/g, '').length >= 10) && unidadeId && (convite || curriculo) && aceite;
 
   const enviar = async (e: FormEvent) => {
     e.preventDefault();
@@ -122,8 +142,9 @@ function FormularioCandidatura({ form, onEnviado }: { form: Formulario; onEnviad
     dados.set('aceite', String(aceite));
     dados.set('avisoVersao', form.aviso!.versao);
     if (site) dados.set('site', site);
-    dados.set('curriculo', curriculo!);
-    dados.set('foto', foto!);
+    if (convite) dados.set('convite', convite.token);
+    if (curriculo) dados.set('curriculo', curriculo);
+    if (foto) dados.set('foto', foto);
     setEnviando(true);
     try {
       const r = await fetch('/api/publico/candidaturas', { method: 'POST', body: dados });
@@ -132,6 +153,8 @@ function FormularioCandidatura({ form, onEnviado }: { form: Formulario; onEnviad
         return mostrarErro(j?.erro || 'Não foi possível enviar. Tente de novo.');
       }
       const j = await r.json().catch(() => null);
+      // Convite: o portal abre direto, já com acesso, para conversar com o RH.
+      if (j?.portal) { window.location.assign('/portal'); return; }
       onEnviado(typeof j?.whatsapp === 'string' && j.whatsapp.startsWith('https://wa.me/') ? j.whatsapp : null);
     } catch {
       mostrarErro('Sem conexão. Confira sua internet e tente de novo.');
@@ -155,7 +178,15 @@ function FormularioCandidatura({ form, onEnviado }: { form: Formulario; onEnviad
           <Campo rotulo="Nome" value={nome} onChange={(e) => setNome(e.target.value)} autoComplete="given-name" maxLength={80} required />
           <Campo rotulo="Sobrenome" value={sobrenome} onChange={(e) => setSobrenome(e.target.value)} autoComplete="family-name" maxLength={120} required />
           <Campo rotulo="CPF" value={cpf} onChange={(e) => setCpf(mascaraCpf(e.target.value))} inputMode="numeric" placeholder="000.000.000-00" required />
-          <Campo rotulo="Telefone com DDD (WhatsApp)" value={telefone} onChange={(e) => setTelefone(mascaraTelefone(e.target.value))} inputMode="tel" autoComplete="tel-national" placeholder="(11) 91234-5678" required />
+          {convite ? (
+            <div>
+              <span className="rotulo">Telefone (WhatsApp)</span>
+              <p className="campo flex items-center bg-superficie-2 text-suave" aria-label="Telefone do convite">{convite.telefone}</p>
+              <p className="mt-1 text-[13px] text-suave">O mesmo número em que você recebeu o convite.</p>
+            </div>
+          ) : (
+            <Campo rotulo="Telefone com DDD (WhatsApp)" value={telefone} onChange={(e) => setTelefone(mascaraTelefone(e.target.value))} inputMode="tel" autoComplete="tel-national" placeholder="(11) 91234-5678" required />
+          )}
         </div>
         <div>
           <label htmlFor={idUnidade} className="rotulo">Unidade pretendida</label>
@@ -172,10 +203,23 @@ function FormularioCandidatura({ form, onEnviado }: { form: Formulario; onEnviad
 
       <section className="cartao space-y-4 p-5 sm:p-6">
         <h2 className="text-lg font-semibold">Documentos</h2>
-        <EscolherArquivo rotulo="Currículo" dica={`${form.limites.curriculo.join(', ')} · até ${form.limites.curriculoMb} MB`}
-          accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-          arquivo={curriculo} onEscolher={setCurriculo} icone={<FileText className="size-6" />} />
-        <EscolherArquivo rotulo="Foto 3x4" dica={`${form.limites.foto.join(' ou ')} · até ${form.limites.fotoMb} MB · rosto de frente, fundo claro`}
+        {convite ? (
+          <div>
+            <span className="rotulo">Currículo</span>
+            <div className="flex min-h-20 items-center gap-4 rounded-2xl border-2 border-verde/40 bg-verde/8 px-4 py-3">
+              <span className="grid size-12 shrink-0 place-items-center rounded-xl bg-verde/15 text-verde"><CheckCircle2 className="size-6" /></span>
+              <span className="min-w-0">
+                <span className="block font-semibold">Currículo já enviado</span>
+                <span className="block truncate text-[13px] text-suave">{convite.curriculo ?? 'O RH já anexou seu currículo.'}</span>
+              </span>
+            </div>
+          </div>
+        ) : (
+          <EscolherArquivo rotulo="Currículo" dica={`${form.limites.curriculo.join(', ')} · até ${form.limites.curriculoMb} MB`}
+            accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            arquivo={curriculo} onEscolher={setCurriculo} icone={<FileText className="size-6" />} />
+        )}
+        <EscolherArquivo rotulo="Foto 3x4" opcional dica={`${form.limites.foto.join(' ou ')} · até ${form.limites.fotoMb} MB · rosto de frente, fundo claro`}
           accept="image/jpeg,image/png" arquivo={foto} onEscolher={setFoto} icone={<ImagePlus className="size-6" />} imagem />
       </section>
 
@@ -191,7 +235,7 @@ function FormularioCandidatura({ form, onEnviado }: { form: Formulario; onEnviad
       </section>
 
       <Botao type="submit" className="w-full sm:w-auto" carregando={enviando} disabled={!pronto} icone={<Send className="size-4" />}>
-        {enviando ? 'Enviando...' : 'Enviar candidatura'}
+        {enviando ? 'Enviando...' : convite ? 'Completar cadastro e abrir o portal' : 'Enviar candidatura'}
       </Botao>
 
       <Modal aberto={verAviso} onFechar={() => setVerAviso(false)} titulo="Aviso de privacidade" largura="max-w-2xl"
@@ -203,8 +247,8 @@ function FormularioCandidatura({ form, onEnviado }: { form: Formulario; onEnviad
   );
 }
 
-function EscolherArquivo({ rotulo, dica, accept, arquivo, onEscolher, icone, imagem }: {
-  rotulo: string; dica: string; accept: string; arquivo: File | null; onEscolher: (f: File | null) => void; icone: ReactNode; imagem?: boolean;
+function EscolherArquivo({ rotulo, dica, accept, arquivo, onEscolher, icone, imagem, opcional }: {
+  rotulo: string; dica: string; accept: string; arquivo: File | null; onEscolher: (f: File | null) => void; icone: ReactNode; imagem?: boolean; opcional?: boolean;
 }) {
   const id = useId();
   const [previa, setPrevia] = useState<string | null>(null);
@@ -217,7 +261,7 @@ function EscolherArquivo({ rotulo, dica, accept, arquivo, onEscolher, icone, ima
 
   return (
     <div>
-      <span className="rotulo">{rotulo}</span>
+      <span className="rotulo">{rotulo}{opcional && <span className="font-normal text-suave"> (opcional)</span>}</span>
       <label htmlFor={id} className="flex min-h-20 cursor-pointer items-center gap-4 rounded-2xl border-2 border-dashed border-borda bg-superficie-2 px-4 py-3 transition hover:border-amarelo-forte focus-within:border-amarelo-forte">
         {previa ? (
           <img src={previa} alt="Prévia da foto" className="size-16 rounded-xl object-cover" />

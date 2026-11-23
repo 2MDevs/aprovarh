@@ -46,6 +46,11 @@ export const DEFINICOES = {
     padrao: 'Olá, {nome}! Para acompanhar sua candidatura na Hummm! Pizzas, acesse {link} e use o código {codigo}. Ele vale até as 23h59 de hoje.' },
   'whatsapp.texto_entrevista': { grupo: 'whatsapp', rotulo: 'Evolution: texto de confirmação de entrevista ({data}, {horario})', tipo: 'textoLongo',
     padrao: 'Olá! Sua entrevista foi agendada para o dia {data}, às {horario}.\n\nVocê estaria disponível nessa data?\n\nResponda SIM ou NÃO.' },
+  'whatsapp.texto_convite': { grupo: 'whatsapp', rotulo: 'Convite do pré-cadastro ({nome}, {unidade}, {link})', tipo: 'textoLongo',
+    padrao: 'Olá, {nome}! Aqui é do RH da Hummm! Pizzas. Recebemos seu currículo e ele foi selecionado para a próxima etapa, a entrevista, na unidade {unidade}.\n\nPara continuar, complete seu cadastro neste link (leva 1 minuto): {link}\n\nDepois de completar, você conversa com a gente direto pelo portal.' },
+  'whatsapp.convite_intervalo_segundos': { grupo: 'whatsapp', rotulo: 'Convites: segundos entre um envio e outro (menos risco de bloqueio)', tipo: 'numero', padrao: '90', min: 30, max: 900 },
+  'whatsapp.convites_por_dia': { grupo: 'whatsapp', rotulo: 'Convites: máximo por dia (o que passar fica para o dia seguinte)', tipo: 'numero', padrao: '25', min: 1, max: 300 },
+  'whatsapp.convite_horario': { grupo: 'whatsapp', rotulo: 'Convites: horário de envio (Brasília), ex.: 09:00-19:00', tipo: 'texto', padrao: '09:00-19:00' },
   // Meta (Cloud API oficial): desligada por enquanto (D40). As chaves ficam para reativar no futuro.
   'whatsapp.phone_number_id': { grupo: 'whatsapp', rotulo: 'Meta: ID do número (Phone Number ID)', tipo: 'texto', env: 'WHATSAPP_PHONE_NUMBER_ID' },
   'whatsapp.waba_id': { grupo: 'whatsapp', rotulo: 'Meta: ID da conta WhatsApp Business (WABA ID)', tipo: 'texto', env: 'WHATSAPP_WABA_ID' },

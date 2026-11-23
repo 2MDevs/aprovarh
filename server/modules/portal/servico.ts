@@ -1,7 +1,7 @@
 import type { PoolClient } from 'pg';
 import { auditar, type Ator } from '../../core/audit.ts';
 import { publicar } from '../../core/tempoReal.ts';
-import { hmac, randomFromAlphabet } from '../../lib/crypto.ts';
+import { hmac, randomFromAlphabet, randomToken } from '../../lib/crypto.ts';
 import { fimDoDiaEmBrasilia } from '../../lib/datas.ts';
 
 /**
@@ -99,4 +99,19 @@ export async function expirarLiberacoes(db: PoolClient): Promise<number> {
     await publicar(db, { tipo: 'candidato.atualizado', candidatoId: l.candidato_id, unidadeId: l.unidade_id });
   }
   return r.rowCount ?? 0;
+}
+
+/**
+ * Abre uma sessão do portal direto, sem o candidato digitar o código (usado logo depois de completar o convite:
+ * o link chegou pelo WhatsApp dele, então ele já provou que é o dono do número). Devolve o token do cookie.
+ */
+export async function abrirSessaoDireta(db: PoolClient, liberacaoId: string, candidatoId: string, ip: string | null, dispositivo: string | null): Promise<string> {
+  const token = randomToken();
+  await db.query(
+    `INSERT INTO sessoes_portal (liberacao_id, candidato_id, token_hash, ip, dispositivo) VALUES ($1, $2, $3, $4, $5)`,
+    [liberacaoId, candidatoId, hmac(`sessao-portal:${token}`), ip, dispositivo],
+  );
+  await db.query('UPDATE liberacoes_acesso SET primeiro_uso_em = COALESCE(primeiro_uso_em, now()) WHERE id = $1', [liberacaoId]);
+  await db.query(`INSERT INTO acessos_portal (candidato_id, liberacao_id, resultado, ip, dispositivo) VALUES ($1, $2, 'sucesso', $3, $4)`, [candidatoId, liberacaoId, ip, dispositivo]);
+  return token;
 }

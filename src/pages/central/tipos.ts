@@ -10,6 +10,7 @@ export interface CandidatoLista {
   id: string; codigo: string; nome: string; unidade: { id: string; nome: string };
   status: { id: string; nome: string; cor: string }; fotoId: string | null; tags: Tag[];
   candidaturaEm: string; ultimaInteracaoEm: string; naoLidas: number;
+  preCadastro: { conviteAgendadoPara: string | null } | null;
   ultimaMensagem: { texto: string; autor: string; em: string } | null;
 }
 export interface PaginaCandidatos { total: number; pagina: number; porPagina: number; candidatos: CandidatoLista[] }
@@ -17,7 +18,9 @@ export interface PaginaCandidatos { total: number; pagina: number; porPagina: nu
 export interface Perfil {
   id: string; codigo: string; nome: string; sobrenome: string; telefone: string; cpf: string;
   unidade: { id: string; nome: string }; status: { id: string; nome: string; cor: string; final: boolean };
-  fotoId: string | null; curriculoId: string | null; candidaturaEm: string; consentimentoEm: string;
+  fotoId: string | null; curriculoId: string | null; candidaturaEm: string; consentimentoEm: string | null;
+  origem: "formulario" | "rh";
+  preCadastro: { conviteAgendadoPara: string | null; conviteExpiraEm: string | null } | null;
   tags: Tag[];
   etapas: { etapa: Etapa; situacao: SituacaoEtapa; origem: 'automatica' | 'manual' }[];
   historico: {

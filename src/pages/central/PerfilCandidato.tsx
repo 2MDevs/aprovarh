@@ -81,6 +81,8 @@ export function PerfilCandidato({ candidatoId, versao, onFechar, onMudou }: { ca
         </div>
       )}
 
+      {p.preCadastro && <SecaoConvite p={p} />}
+
       <Secao titulo="Dados">
         <dl className="space-y-2 text-sm">
           <Linha rotulo="Telefone">{p.telefone}</Linha>
@@ -90,7 +92,7 @@ export function PerfilCandidato({ candidatoId, versao, onFechar, onMudou }: { ca
           </Linha>
           <Linha rotulo="Unidade">{p.unidade.nome}</Linha>
           <Linha rotulo="Candidatura">{dataHora(p.candidaturaEm)}</Linha>
-          <Linha rotulo="Aceite LGPD">{dataHora(p.consentimentoEm)}</Linha>
+          <Linha rotulo="Aceite LGPD">{p.consentimentoEm ? dataHora(p.consentimentoEm) : 'Ainda não aceitou (pré-cadastro)'}</Linha>
         </dl>
         {pode('candidatos.editar') && <Botao variante="secundario" className="mt-3 w-full" icone={<Pencil className="size-4" />} onClick={() => setEditar(true)}>Corrigir dados</Botao>}
       </Secao>
@@ -432,5 +434,42 @@ function AutomacoesDoCandidato({ candidatoId, versao }: { candidatoId: string; v
         })}
       </ul>
     </Secao>
+  );
+}
+
+/** Pré-cadastro (D47): situação do convite e botão para enviar ou reenviar. */
+function SecaoConvite({ p }: { p: Perfil }) {
+  const { pode } = useSessao();
+  const avisar = useAviso();
+  const [enviando, setEnviando] = useState(false);
+  const pc = p.preCadastro!;
+  const agendado = pc.conviteAgendadoPara ? new Date(pc.conviteAgendadoPara) : null;
+  const enviar = async () => {
+    setEnviando(true);
+    try {
+      const r = await api.post<{ agendadoPara: string }>(`/api/central/convites/candidato/${p.id}`);
+      avisar(`Convite marcado para ${dataHora(r.agendadoPara)}.`);
+    } catch (e) {
+      avisar(e instanceof ApiError ? e.message : 'Não foi possível enviar o convite.', 'erro');
+    } finally {
+      setEnviando(false);
+    }
+  };
+  return (
+    <div className="mx-4 mt-4">
+      <Aviso tipo="atencao">
+        <p className="font-semibold">Pré-cadastro: falta o candidato completar o cadastro.</p>
+        <p className="mt-1">
+          {!agendado ? 'O convite ainda não foi enviado.'
+            : agendado > new Date() ? `Convite na fila, sai em ${dataHora(agendado.toISOString())}.`
+            : `Convite enviado em ${dataHora(agendado.toISOString())}${pc.conviteExpiraEm ? `; o link vale até ${dataHora(pc.conviteExpiraEm)}` : ''}.`}
+        </p>
+        {pode('candidatos.editar') && (
+          <Botao variante="secundario" className="mt-3" carregando={enviando} onClick={() => void enviar()}>
+            {agendado ? 'Reenviar convite (link novo)' : 'Enviar convite pelo WhatsApp'}
+          </Botao>
+        )}
+      </Aviso>
+    </div>
   );
 }

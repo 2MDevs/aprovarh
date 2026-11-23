@@ -1,5 +1,8 @@
 import crypto from 'node:crypto';
-import { pool } from '../../db/pool.ts';
+import { isProd } from '../../config/env.ts';
+import { pool, transaction } from '../../db/pool.ts';
+import { COOKIE_PORTAL } from '../portal/routes.ts';
+import { abrirSessaoDireta, liberarAcesso } from '../portal/servico.ts';
 import { exigirLogin } from '../../middleware/auth.ts';
 import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
@@ -11,7 +14,7 @@ import { detectarTipo, type TipoAceito } from '../../lib/arquivos.ts';
 import { descreverDispositivo } from '../../lib/device.ts';
 import { capitalizarNome, cpfValido, nomeValido, normalizarTelefone, soDigitos } from '../../lib/documentos.ts';
 import { badRequest, h, HttpError, ipDe, parse } from '../../lib/http.ts';
-import { avisoAtual, registrarCandidatura, unidadesAbertas } from './service.ts';
+import { avisoAtual, completarConvite, lerConvite, registrarCandidatura, unidadesAbertas } from './service.ts';
 
 /**
  * Cadastro público de candidatura (sem login).
@@ -25,6 +28,10 @@ const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: MAX_ABSOLUTO_MB * 1024 * 1024, files: 2, fields: 12, fieldSize: 2048, parts: 16 },
 });
+
+/** Abrir o link do convite (só leitura). */
+const limiteConvite = rateLimit({ windowMs: 60 * 60_000, limit: 30, standardHeaders: 'draft-7', legacyHeaders: false,
+  message: { erro: 'Muitas tentativas a partir desta conexão. Tente de novo em uma hora.', codigo: 'muitas_tentativas' } });
 
 const limiteEnvio = rateLimit({
   windowMs: 60 * 60_000,
@@ -77,6 +84,7 @@ const campos = z.object({
   aceite: z.literal('true', { message: 'Para continuar, leia e aceite o aviso de privacidade.' }),
   avisoVersao: z.string().regex(/^[0-9a-f]{12}$/),
   site: z.string().max(200).optional(), // campo-armadilha: invisível para pessoas
+  convite: z.string().max(100).optional(), // link do pré-cadastro (D47)
 });
 
 const CURRICULO: TipoAceito[] = ['pdf', 'doc', 'docx'];
@@ -93,6 +101,13 @@ function receberArquivos(req: Express.Request, res: Express.Response) {
     });
   });
 }
+
+/** Convite do pré-cadastro: o que já está preenchido. Convite inválido ou vencido recebe sempre a mesma resposta. */
+publicoRouter.get('/convite/:token', limiteConvite, h(async (req, res) => {
+  const c = await lerConvite(String(req.params.token));
+  if (!c) throw new HttpError(404, 'Este link de convite não vale mais. Peça um novo ao RH ou preencha o formulário normal.', 'convite_invalido');
+  res.json({ nome: c.nome, sobrenome: c.sobrenome, unidadeId: c.unidadeId, telefone: `(••) •••••-${c.telefoneFinal}`, curriculo: c.curriculoNome });
+}));
 
 publicoRouter.post('/candidaturas', limiteEnvio, h(async (req, res) => {
   const aviso = await avisoAtual();
@@ -111,22 +126,48 @@ publicoRouter.post('/candidaturas', limiteEnvio, h(async (req, res) => {
     throw badRequest('O aviso de privacidade foi atualizado. Recarregue a página, leia e aceite de novo.', 'aviso_mudou');
   }
 
-  const telefone = normalizarTelefone(body.telefone);
-  if (!telefone) throw badRequest('Telefone inválido. Informe o DDD e o número, por exemplo (11) 91234-5678.', 'telefone_invalido');
-
   const arquivos = req.files as Record<string, Express.Multer.File[]> | undefined;
   const cv = arquivos?.curriculo?.[0];
-  const ft = arquivos?.foto?.[0];
-  if (!cv) throw badRequest('Envie seu currículo.', 'sem_curriculo');
-  if (!ft) throw badRequest('Envie sua foto 3x4.', 'sem_foto');
-
+  const ft = arquivos?.foto?.[0]; // a foto 3x4 é opcional
   const [limiteCv, limiteFoto] = await Promise.all([cfgNumero('arquivos.curriculo_mb'), cfgNumero('arquivos.foto_mb')]);
-  const tipoCv = detectarTipo(cv.buffer);
-  if (!tipoCv || !CURRICULO.includes(tipoCv)) throw badRequest('O currículo precisa ser um arquivo PDF, DOC ou DOCX.', 'curriculo_tipo');
-  if (cv.size > limiteCv * 1024 * 1024) throw badRequest(`O currículo pode ter no máximo ${limiteCv} MB.`, 'curriculo_grande');
-  const tipoFoto = detectarTipo(ft.buffer);
-  if (!tipoFoto || !FOTO.includes(tipoFoto)) throw badRequest('A foto precisa ser uma imagem JPG ou PNG.', 'foto_tipo');
-  if (ft.size > limiteFoto * 1024 * 1024) throw badRequest(`A foto pode ter no máximo ${limiteFoto} MB.`, 'foto_grande');
+  const tipoCv = cv ? detectarTipo(cv.buffer) : null;
+  if (cv && (!tipoCv || !CURRICULO.includes(tipoCv))) throw badRequest('O currículo precisa ser um arquivo PDF, DOC ou DOCX.', 'curriculo_tipo');
+  if (cv && cv.size > limiteCv * 1024 * 1024) throw badRequest(`O currículo pode ter no máximo ${limiteCv} MB.`, 'curriculo_grande');
+  const tipoFoto = ft ? detectarTipo(ft.buffer) : null;
+  if (ft && (!tipoFoto || !FOTO.includes(tipoFoto))) throw badRequest('A foto precisa ser uma imagem JPG ou PNG.', 'foto_tipo');
+  if (ft && ft.size > limiteFoto * 1024 * 1024) throw badRequest(`A foto pode ter no máximo ${limiteFoto} MB.`, 'foto_grande');
+  const foto = ft && tipoFoto ? { conteudo: ft.buffer, nome: ft.originalname, tipo: tipoFoto } : null;
+
+  // Convite do pré-cadastro: o currículo já foi enviado pelo RH e o telefone é o do convite. Depois, o portal abre sozinho.
+  if (body.convite) {
+    let r: Awaited<ReturnType<typeof completarConvite>>;
+    try {
+      r = await completarConvite({
+        token: body.convite, nome: capitalizarNome(body.nome), sobrenome: capitalizarNome(body.sobrenome), cpf: soDigitos(body.cpf),
+        unidadeId: body.unidadeId, curriculo: cv && tipoCv ? { conteudo: cv.buffer, nome: cv.originalname, tipo: tipoCv } : null,
+        foto, avisoVersao: aviso.versao, ip,
+      });
+    } catch (err) {
+      if ((err as Error).message === 'UNIDADE_INVALIDA') throw badRequest('Essa unidade não está recebendo candidaturas. Escolha outra.', 'unidade_invalida');
+      throw err;
+    }
+    if (!r) throw new HttpError(404, 'Este link de convite não vale mais. Peça um novo ao RH ou preencha o formulário normal.', 'convite_invalido');
+    const dispositivo = descreverDispositivo(req.get('user-agent')).nome;
+    const final = r;
+    const sessao = await transaction(async (db) => {
+      const lib = await liberarAcesso(db, final.candidatoId, final.unidadeId,
+        { tipo: 'usuario', usuarioId: final.convidadoPor ?? undefined, ator: { usuarioNome: 'Convite do pré-cadastro' } }, { permiteArquivo: true }, ip);
+      return { token: await abrirSessaoDireta(db, lib.liberacaoId, final.candidatoId, ip, dispositivo), expiraEm: lib.expiraEm };
+    });
+    res.cookie(COOKIE_PORTAL, sessao.token, {
+      httpOnly: true, secure: isProd, sameSite: 'lax', path: '/', maxAge: Math.max(1000, sessao.expiraEm.getTime() - Date.now()),
+    });
+    return res.status(201).json({ ok: true, portal: true });
+  }
+
+  const telefone = normalizarTelefone(body.telefone);
+  if (!telefone) throw badRequest('Telefone inválido. Informe o DDD e o número, por exemplo (11) 91234-5678.', 'telefone_invalido');
+  if (!cv || !tipoCv) throw badRequest('Envie seu currículo.', 'sem_curriculo');
 
   let protocolo = novoProtocolo();
   try {
@@ -137,7 +178,7 @@ publicoRouter.post('/candidaturas', limiteEnvio, h(async (req, res) => {
       telefone,
       unidadeId: body.unidadeId,
       curriculo: { conteudo: cv.buffer, nome: cv.originalname, tipo: tipoCv },
-      foto: { conteudo: ft.buffer, nome: ft.originalname, tipo: tipoFoto },
+      foto,
       avisoVersao: aviso.versao,
       ip,
     });
