@@ -47,9 +47,6 @@ export function NaoIdentificados({ onFechar }: { onFechar: () => void }) {
 
   return (
     <>
-    <Confirmar aberto={limpar} titulo="Limpar a lista?" rotulo="Limpar" carregando={limpando}
-      texto={`Os ${dados?.length ?? 0} contato(s) saem da lista (ficam arquivados). Se um deles escrever de novo, volta para a lista.`}
-      onConfirmar={() => void limparTudo()} onCancelar={() => setLimpar(false)} />
     <Modal aberto onFechar={onFechar} largura="max-w-2xl" titulo="Contatos não identificados"
       descricao="Números que escreveram no WhatsApp do recrutamento e não são de candidatos. Se for alguém interessado na vaga, envie o link da candidatura."
       rodape={<>{pode('conversas.responder') && Boolean(dados?.length) && <Botao variante="secundario" icone={<Eraser className="size-4" />} onClick={() => setLimpar(true)}>Limpar lista</Botao>}<Botao variante="secundario" onClick={onFechar}>Fechar</Botao></>}>
@@ -78,6 +75,10 @@ export function NaoIdentificados({ onFechar }: { onFechar: () => void }) {
         </ul>
       )}
     </Modal>
+    {/* Depois do Modal: a confirmação precisa ficar por cima da lista. */}
+    <Confirmar aberto={limpar} titulo="Limpar a lista?" rotulo="Limpar" carregando={limpando}
+      texto={`Os ${dados?.length ?? 0} contato(s) saem da lista (ficam arquivados). Se um deles escrever de novo, volta para a lista.`}
+      onConfirmar={() => void limparTudo()} onCancelar={() => setLimpar(false)} />
     </>
   );
 }
