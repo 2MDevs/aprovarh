@@ -21,6 +21,8 @@ export interface Enfileirar {
   textoNaConversa?: string;
   chaveIdempotencia: string;
   execucaoId?: string | null;
+  /** Não enviar antes desta hora (convites espaçados para diminuir o risco de bloqueio). */
+  enviarEm?: Date | null;
 }
 
 export async function janelaAberta(db: PoolClient, candidatoId: string): Promise<boolean> {
@@ -51,8 +53,8 @@ export async function enfileirar(db: PoolClient, e: Enfileirar): Promise<string 
     [c.rows[0].conversa_id, e.autor.tipo, e.autor.usuarioId ?? null, e.autor.nome, e.execucaoId ?? null, encrypt(texto)],
   );
   await db.query(
-    `INSERT INTO fila_envio (mensagem_id, para, conteudo, chave_idempotencia) VALUES ($1, $2, $3, $4)`,
-    [m.rows[0].id, c.rows[0].telefone, encrypt(JSON.stringify(e.conteudo)), e.chaveIdempotencia],
+    `INSERT INTO fila_envio (mensagem_id, para, conteudo, chave_idempotencia, proxima_tentativa_em) VALUES ($1, $2, $3, $4, COALESCE($5::timestamptz, now()))`,
+    [m.rows[0].id, c.rows[0].telefone, encrypt(JSON.stringify(e.conteudo)), e.chaveIdempotencia, e.enviarEm ?? null],
   );
   await db.query('UPDATE conversas SET ultima_mensagem_id = $2, ultima_mensagem_em = $3 WHERE id = $1', [c.rows[0].conversa_id, m.rows[0].id, m.rows[0].criado_em]);
   await db.query('SELECT pg_notify($1, $2)', ['aprovarh_fila_whatsapp', m.rows[0].id]); // acorda o Worker

@@ -19,12 +19,13 @@ export const EVENTO_SESSAO = 'arh:sessao';
 
 async function requisicao<T>(metodo: string, url: string, corpo?: unknown, tentativa = 0): Promise<T> {
   let resp: Response;
+  const formulario = corpo instanceof FormData; // envio com arquivo: o navegador monta o cabeçalho
   try {
     resp = await fetch(url, {
       method: metodo,
       credentials: 'same-origin',
-      headers: corpo !== undefined ? { 'Content-Type': 'application/json' } : undefined,
-      body: corpo !== undefined ? JSON.stringify(corpo) : undefined,
+      headers: corpo !== undefined && !formulario ? { 'Content-Type': 'application/json' } : undefined,
+      body: corpo === undefined ? undefined : formulario ? (corpo as FormData) : JSON.stringify(corpo),
     });
   } catch {
     throw new ApiError(0, 'Sem conexão com o servidor. Confira sua internet.', 'sem_conexao');
@@ -52,6 +53,7 @@ export const api = {
   post: <T>(url: string, corpo: unknown = {}) => requisicao<T>('POST', url, corpo),
   put: <T>(url: string, corpo: unknown) => requisicao<T>('PUT', url, corpo),
   del: <T>(url: string) => requisicao<T>('DELETE', url),
+  enviarArquivo: <T>(url: string, dados: FormData) => requisicao<T>('POST', url, dados),
 };
 
 export function query(params: Record<string, string | number | undefined | null>) {

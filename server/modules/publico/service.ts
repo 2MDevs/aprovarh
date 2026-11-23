@@ -13,7 +13,7 @@ export interface NovaCandidatura {
   telefone: string;       // +55..., já normalizado
   unidadeId: string;
   curriculo: { conteudo: Buffer; nome: string; tipo: TipoAceito };
-  foto: { conteudo: Buffer; nome: string; tipo: TipoAceito };
+  foto: { conteudo: Buffer; nome: string; tipo: TipoAceito } | null; // opcional
   avisoVersao: string;
   ip: string;
 }
@@ -62,8 +62,8 @@ export async function registrarCandidatura(c: NovaCandidatura): Promise<{ tipo: 
 
       const curriculo = await guardarArquivo(db, c.curriculo.conteudo, c.curriculo.nome, c.curriculo.tipo);
       gravados.push(curriculo);
-      const foto = await guardarArquivo(db, c.foto.conteudo, c.foto.nome, c.foto.tipo);
-      gravados.push(foto);
+      const foto = c.foto ? await guardarArquivo(db, c.foto.conteudo, c.foto.nome, c.foto.tipo) : null;
+      if (foto) gravados.push(foto);
 
       const existente = await db.query<{ id: string; codigo: string; telefone_hash: string; unidade_id: string; status_id: string; final: boolean }>(
         `SELECT c.id, c.codigo, c.telefone_hash, c.unidade_id, c.status_id, s.final
@@ -84,14 +84,32 @@ export async function registrarCandidatura(c: NovaCandidatura): Promise<{ tipo: 
       let telefoneDiferente = false;
       let unidadeDiferente = false;
 
-      if (!existente.rowCount) {
+      // Pré-cadastro do RH com o mesmo telefone, ainda pendente (o candidato usou o formulário comum em vez do convite):
+      // completa essa ficha em vez de criar outra.
+      const pendente = existente.rowCount ? null : (await db.query<{ id: string; codigo: string }>(
+        'SELECT id, codigo FROM candidatos WHERE telefone_hash = $1 AND cadastro_pendente AND excluido_em IS NULL LIMIT 1 FOR UPDATE',
+        [telefoneHash],
+      )).rows[0];
+
+      if (pendente) {
+        tipo = 'nova';
+        candidatoId = pendente.id;
+        codigo = pendente.codigo;
+        await db.query(
+          `UPDATE candidatos SET nome = $2, sobrenome = $3, cpf = $4, cpf_hash = $5, cpf_final = $6, unidade_id = $7,
+             foto_id = COALESCE($8, foto_id), curriculo_id = $9, consentimento_em = now(), aviso_versao = $10,
+             cadastro_pendente = false, cadastro_completo_em = now(), convite_token_hash = NULL, atualizado_em = now()
+           WHERE id = $1`,
+          [candidatoId, c.nome, c.sobrenome, encrypt(c.cpf), cpfHash, c.cpf.slice(-2), c.unidadeId, foto?.id ?? null, curriculo.id, c.avisoVersao],
+        );
+      } else if (!existente.rowCount) {
         tipo = 'nova';
         const r = await db.query<{ id: string; codigo: string }>(
           `INSERT INTO candidatos (nome, sobrenome, cpf, cpf_hash, cpf_final, telefone, telefone_hash, telefone_final,
              unidade_id, status_id, foto_id, curriculo_id, consentimento_em, aviso_versao)
            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,now(),$13) RETURNING id, codigo`,
           [c.nome, c.sobrenome, encrypt(c.cpf), cpfHash, c.cpf.slice(-2), encrypt(c.telefone), telefoneHash, c.telefone.slice(-4),
-            c.unidadeId, inicial.id, foto.id, curriculo.id, c.avisoVersao],
+            c.unidadeId, inicial.id, foto?.id ?? null, curriculo.id, c.avisoVersao],
         );
         candidatoId = r.rows[0].id;
         codigo = r.rows[0].codigo;
@@ -130,12 +148,10 @@ export async function registrarCandidatura(c: NovaCandidatura): Promise<{ tipo: 
       await db.query(
         `INSERT INTO candidaturas (candidato_id, unidade_id, tipo, nome_informado, telefone_informado, telefone_diferente, unidade_diferente, curriculo_id, foto_id, ip)
          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
-        [candidatoId, c.unidadeId, tipo, nomeCompleto, encrypt(c.telefone), telefoneDiferente, unidadeDiferente, curriculo.id, foto.id, c.ip],
+        [candidatoId, c.unidadeId, tipo, nomeCompleto, encrypt(c.telefone), telefoneDiferente, unidadeDiferente, curriculo.id, foto?.id ?? null, c.ip],
       );
-      await db.query(
-        `INSERT INTO candidato_arquivos (candidato_id, arquivo_id, tipo) VALUES ($1, $2, 'curriculo'), ($1, $3, 'foto')`,
-        [candidatoId, curriculo.id, foto.id],
-      );
+      await db.query(`INSERT INTO candidato_arquivos (candidato_id, arquivo_id, tipo) VALUES ($1, $2, 'curriculo')`, [candidatoId, curriculo.id]);
+      if (foto) await db.query(`INSERT INTO candidato_arquivos (candidato_id, arquivo_id, tipo) VALUES ($1, $2, 'foto')`, [candidatoId, foto.id]);
       await db.query(
         `INSERT INTO eventos_dominio (tipo, candidato_id, dados) VALUES ($1, $2, $3)`,
         [tipo === 'repetida' ? 'candidato.candidatura_repetida' : 'candidato.cadastrado', candidatoId, JSON.stringify({ unidadeId: c.unidadeId, tipo })],
@@ -172,7 +188,7 @@ export async function registrarCandidatura(c: NovaCandidatura): Promise<{ tipo: 
   }
 }
 
-async function gravarLinhaDoTempoInicial(db: PoolClient, candidatoId: string, inicial: { etapa_portal: string; situacao_portal: string }) {
+export async function gravarLinhaDoTempoInicial(db: PoolClient, candidatoId: string, inicial: { etapa_portal: string; situacao_portal: string }) {
   const etapas = ['candidatura', 'analise', 'entrevista', 'resultado'];
   const posicao = etapas.indexOf(inicial.etapa_portal);
   for (const [i, etapa] of etapas.entries()) {
@@ -188,4 +204,137 @@ async function gravarLinhaDoTempoInicial(db: PoolClient, candidatoId: string, in
 export async function unidadesAbertas() {
   const { rows } = await pool.query<{ id: string; nome: string }>('SELECT id, nome FROM unidades WHERE ativa AND excluido_em IS NULL ORDER BY nome');
   return rows;
+}
+
+// ── Convite do pré-cadastro (D47) ─────────────────────────────────────────
+
+export interface Convite { candidatoId: string; nome: string; sobrenome: string; unidadeId: string; telefoneFinal: string; curriculoNome: string | null }
+
+/** Convite válido: pendente, dentro da validade. O token nunca é guardado, só o hash. */
+export async function lerConvite(token: string, db: { query: PoolClient['query'] } = pool, travar = false): Promise<Convite | null> {
+  if (!/^[A-Za-z0-9_-]{20,80}$/.test(token)) return null;
+  const r = await db.query(
+    `SELECT c.id, c.nome, c.sobrenome, c.unidade_id, c.telefone_final, a.nome_original
+       FROM candidatos c LEFT JOIN arquivos a ON a.id = c.curriculo_id
+      WHERE c.convite_token_hash = $1 AND c.cadastro_pendente AND c.excluido_em IS NULL AND c.convite_expira_em > now()
+      ${travar ? 'FOR UPDATE OF c' : ''}`,
+    [hmac(`convite:${token}`)],
+  );
+  const c = r.rows[0];
+  return c ? { candidatoId: c.id, nome: c.nome, sobrenome: c.sobrenome, unidadeId: c.unidade_id, telefoneFinal: c.telefone_final, curriculoNome: c.nome_original } : null;
+}
+
+export interface CompletarConvite {
+  token: string;
+  nome: string;
+  sobrenome: string;
+  cpf: string;
+  unidadeId: string;
+  curriculo?: { conteudo: Buffer; nome: string; tipo: TipoAceito } | null;
+  foto?: { conteudo: Buffer; nome: string; tipo: TipoAceito } | null;
+  avisoVersao: string;
+  ip: string;
+}
+
+/**
+ * O candidato completa o pré-cadastro pelo link do convite. Devolve a ficha final (para abrir o portal).
+ * - CPF novo: a ficha do pré-cadastro vira ficha completa (CPF, aceite do aviso, foto se mandou).
+ * - CPF que já tinha ficha: a candidatura entra nessa ficha; o currículo e a conversa do pré-cadastro vão junto
+ *   e o pré-cadastro é encerrado (uma pessoa = uma ficha).
+ * O telefone é o do convite (foi por ele que o link chegou); o candidato não troca aqui.
+ */
+export async function completarConvite(c: CompletarConvite): Promise<{ candidatoId: string; unidadeId: string; nome: string; convidadoPor: string | null } | null> {
+  const gravados: ArquivoGuardado[] = [];
+  const cpfHash = hmac(`cpf:${c.cpf}`);
+  try {
+    return await transaction(async (db) => {
+      await db.query('SELECT pg_advisory_xact_lock(hashtextextended($1, 0))', [cpfHash]);
+      const conv = await lerConvite(c.token, db, true);
+      if (!conv) return null;
+      const pre = (await db.query<{ telefone: string; telefone_hash: string; convite_enviado_por: string | null; curriculo_id: string | null }>(
+        'SELECT telefone, telefone_hash, convite_enviado_por, curriculo_id FROM candidatos WHERE id = $1', [conv.candidatoId],
+      )).rows[0];
+      const unidade = await db.query<{ nome: string }>('SELECT nome FROM unidades WHERE id = $1 AND ativa AND excluido_em IS NULL', [c.unidadeId]);
+      if (!unidade.rowCount) throw new Error('UNIDADE_INVALIDA');
+
+      const curriculo = c.curriculo ? await guardarArquivo(db, c.curriculo.conteudo, c.curriculo.nome, c.curriculo.tipo) : null;
+      if (curriculo) gravados.push(curriculo);
+      const foto = c.foto ? await guardarArquivo(db, c.foto.conteudo, c.foto.nome, c.foto.tipo) : null;
+      if (foto) gravados.push(foto);
+
+      const outra = await db.query<{ id: string; codigo: string; unidade_id: string }>(
+        'SELECT id, codigo, unidade_id FROM candidatos WHERE cpf_hash = $1 AND excluido_em IS NULL AND id <> $2 FOR UPDATE',
+        [cpfHash, conv.candidatoId],
+      );
+      const nomeCompleto = `${c.nome} ${c.sobrenome}`;
+      let alvo = conv.candidatoId;
+      let unidadeAlvo = c.unidadeId;
+      let unificada: string | null = null;
+
+      if (!outra.rowCount) {
+        await db.query(
+          `UPDATE candidatos SET nome = $2, sobrenome = $3, cpf = $4, cpf_hash = $5, cpf_final = $6, unidade_id = $7,
+             foto_id = COALESCE($8, foto_id), curriculo_id = COALESCE($9, curriculo_id), consentimento_em = now(), aviso_versao = $10,
+             cadastro_pendente = false, cadastro_completo_em = now(), convite_token_hash = NULL,
+             candidatura_em = now(), ultima_interacao_em = now(), atualizado_em = now()
+           WHERE id = $1`,
+          [alvo, c.nome, c.sobrenome, encrypt(c.cpf), cpfHash, c.cpf.slice(-2), c.unidadeId, foto?.id ?? null, curriculo?.id ?? null, c.avisoVersao],
+        );
+      } else {
+        // Já existia uma ficha com esse CPF: a candidatura vai para ela.
+        const o = outra.rows[0];
+        alvo = o.id;
+        unidadeAlvo = o.unidade_id;
+        unificada = o.codigo;
+        await db.query('UPDATE candidatos SET consentimento_em = now(), aviso_versao = $2, candidatura_em = now(), ultima_interacao_em = now() WHERE id = $1', [alvo, c.avisoVersao]);
+        await db.query('INSERT INTO conversas (candidato_id) VALUES ($1) ON CONFLICT (candidato_id) DO NOTHING', [alvo]);
+        await db.query(
+          `UPDATE mensagens SET conversa_id = (SELECT id FROM conversas WHERE candidato_id = $2)
+            WHERE conversa_id = (SELECT id FROM conversas WHERE candidato_id = $1)`, [conv.candidatoId, alvo],
+        );
+        await db.query(
+          `INSERT INTO candidato_arquivos (candidato_id, arquivo_id, tipo, enviado_por, criado_em)
+           SELECT $2, arquivo_id, tipo, enviado_por, criado_em FROM candidato_arquivos WHERE candidato_id = $1 ON CONFLICT DO NOTHING`,
+          [conv.candidatoId, alvo],
+        );
+        await db.query(
+          `UPDATE candidatos SET excluido_em = now(), cadastro_pendente = true, convite_token_hash = NULL, atualizado_em = now() WHERE id = $1`,
+          [conv.candidatoId],
+        );
+      }
+
+      await db.query(
+        `INSERT INTO candidaturas (candidato_id, unidade_id, tipo, nome_informado, telefone_informado, telefone_diferente, unidade_diferente, curriculo_id, foto_id, ip)
+         VALUES ($1,$2,'convite',$3,$4,$5,$6,$7,$8,$9)`,
+        [alvo, c.unidadeId, nomeCompleto, pre.telefone, false, unidadeAlvo !== c.unidadeId, curriculo?.id ?? pre.curriculo_id, foto?.id ?? null, c.ip],
+      );
+      const novos = [curriculo && [curriculo.id, 'curriculo'], foto && [foto.id, 'foto']].filter(Boolean) as [string, string][];
+      for (const [id, tipo] of novos) {
+        await db.query(`INSERT INTO candidato_arquivos (candidato_id, arquivo_id, tipo) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING`, [alvo, id, tipo]);
+      }
+      // Evento próprio: a automação de "nova candidatura" (confirmação pelo WhatsApp) não dispara de novo para quem veio por convite.
+      await db.query('INSERT INTO eventos_dominio (tipo, candidato_id, dados) VALUES ($1, $2, $3)',
+        ['candidato.cadastro_completado', alvo, JSON.stringify({ unidadeId: c.unidadeId, unificadaCom: unificada })]);
+
+      const textoSistema = unificada
+        ? `O candidato completou o cadastro pelo convite. O CPF já tinha esta ficha: o pré-cadastro foi unificado aqui.`
+        : 'O candidato completou o cadastro pelo convite e aceitou o aviso de privacidade.';
+      const msg = await db.query<{ id: string; criado_em: Date }>(
+        `INSERT INTO mensagens (conversa_id, sentido, canal, autor_tipo, autor_nome, texto, visivel_ao_candidato)
+         SELECT id, 'entrada', 'sistema', 'sistema', 'Sistema', $2, false FROM conversas WHERE candidato_id = $1 RETURNING id, criado_em`,
+        [alvo, encrypt(textoSistema)],
+      );
+      await db.query('UPDATE conversas SET ultima_mensagem_id = $2, ultima_mensagem_em = $3 WHERE candidato_id = $1', [alvo, msg.rows[0].id, msg.rows[0].criado_em]);
+      await publicar(db, { tipo: 'candidatura.nova', candidatoId: alvo, unidadeId: unidadeAlvo });
+      await notificarGestoras(db, unidadeAlvo, 'Cadastro completado pelo convite', `${nomeCompleto} · ${unidade.rows[0].nome}${unificada ? ` · unificado com ${unificada}` : ''}`, `/conversas?c=${alvo}`);
+      await auditar({
+        acao: 'candidatura.convite_completado', resultado: 'sucesso', item: { tipo: 'candidato', id: alvo, nome: nomeCompleto },
+        detalhes: { unidade: unidade.rows[0].nome, unificadaCom: unificada, avisoVersao: c.avisoVersao }, ator: ATOR_FORMULARIO, ip: c.ip,
+      }, db);
+      return { candidatoId: alvo, unidadeId: unidadeAlvo, nome: c.nome, convidadoPor: pre.convite_enviado_por };
+    });
+  } catch (err) {
+    await descartarArquivos(gravados);
+    throw err;
+  }
 }

@@ -229,6 +229,14 @@ whatsappCentralRouter.get('/nao-identificados', h(async (req, res) => {
   }));
 }));
 
+/** Limpa a lista inteira de contatos não identificados (arquiva todos; as mensagens deles não são de candidatos). */
+whatsappCentralRouter.post('/nao-identificados/limpar', exigirPermissao('conversas.responder'), h(async (req, res) => {
+  exigirTodasUnidades(req);
+  const r = await pool.query('UPDATE contatos_nao_identificados SET arquivado_em = now() WHERE arquivado_em IS NULL AND vinculado_a IS NULL');
+  await auditarReq(req, { acao: 'whatsapp.nao_identificados_limpos', resultado: 'sucesso', detalhes: { total: r.rowCount } });
+  res.json({ total: r.rowCount });
+}));
+
 whatsappCentralRouter.post('/nao-identificados/:id/arquivar', exigirPermissao('conversas.responder'), h(async (req, res) => {
   exigirTodasUnidades(req);
   const id = parse(z.string().uuid(), req.params.id);

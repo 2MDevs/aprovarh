@@ -6,6 +6,7 @@ import { Carregando, ErroCarregar, SemPermissao } from '../../components/ui';
 import { useEventos } from '../../lib/eventos';
 import { useDados } from '../../lib/useDados';
 import { Chat } from './Chat';
+import { SeloPre } from './Candidatos';
 import { Foto, horaCurta, Pilula } from './comum';
 import { NaoIdentificados } from './NaoIdentificados';
 import { Filtros, FILTRO_VAZIO, queryFiltros, type ValoresFiltro } from './Filtros';
@@ -136,6 +137,7 @@ function ItemLista({ c, ativo, onClick }: { c: CandidatoLista; ativo: boolean; o
             {c.naoLidas > 0 && <span className="grid min-w-5 shrink-0 place-items-center rounded-full bg-verde px-1.5 text-[11px] font-bold text-white" aria-label={`${c.naoLidas} não lida(s)`}>{c.naoLidas}</span>}
           </span>
           <span className="mt-1.5 flex flex-wrap items-center gap-1">
+            {c.preCadastro && <SeloPre agendado={c.preCadastro.conviteAgendadoPara} />}
             <Pilula cor={c.status.cor} pequena>{c.status.nome}</Pilula>
             <span className="text-[11px] text-suave">{c.unidade.nome}</span>
             {c.tags.slice(0, 2).map((t) => <Pilula key={t.id} cor={t.cor} pequena>{t.nome}</Pilula>)}

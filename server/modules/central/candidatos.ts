@@ -32,6 +32,7 @@ const filtros = z.object({
   de: z.string().datetime({ offset: true }).optional(),
   ate: z.string().datetime({ offset: true }).optional(),
   naoLidas: z.enum(['1']).optional(),
+  preCadastro: z.enum(['1']).optional(),
   pagina: z.coerce.number().int().min(1).default(1),
   porPagina: z.coerce.number().int().min(10).max(100).default(40),
 });
@@ -67,6 +68,7 @@ candidatosRouter.get('/', h(async (req, res) => {
   const naoLidas = `(SELECT count(*)::int FROM mensagens mm WHERE mm.conversa_id = cv.id AND mm.sentido = 'entrada'
                       AND mm.criado_em > COALESCE(cl.lida_ate, '-infinity'::timestamptz))`;
   if (f.naoLidas) cond.push(`${naoLidas} > 0`);
+  if (f.preCadastro) cond.push('c.cadastro_pendente');
 
   const where = cond.join(' AND ');
   const base = `FROM candidatos c
@@ -79,7 +81,7 @@ candidatosRouter.get('/', h(async (req, res) => {
   const [lista, total] = await Promise.all([
     pool.query(
       `SELECT c.id, c.codigo, c.nome, c.sobrenome, c.unidade_id, un.nome AS unidade, c.status_id, s.nome AS status, s.cor AS status_cor,
-              c.foto_id, c.candidatura_em, c.ultima_interacao_em, m.texto AS ult_texto, m.arquivo_id AS ult_arquivo,
+              c.foto_id, c.candidatura_em, c.ultima_interacao_em, c.cadastro_pendente, c.convite_agendado_para, m.texto AS ult_texto, m.arquivo_id AS ult_arquivo,
               m.autor_tipo AS ult_autor, m.criado_em AS ult_em, ${naoLidas} AS nao_lidas,
               COALESCE((SELECT json_agg(json_build_object('id', t.id, 'nome', t.nome, 'cor', t.cor) ORDER BY t.nome)
                           FROM candidato_tags ct JOIN tags t ON t.id = ct.tag_id WHERE ct.candidato_id = c.id AND t.ativa), '[]') AS tags
@@ -96,6 +98,7 @@ candidatosRouter.get('/', h(async (req, res) => {
       id: r.id, codigo: r.codigo, nome: `${r.nome} ${r.sobrenome}`, unidade: { id: r.unidade_id, nome: r.unidade },
       status: { id: r.status_id, nome: r.status, cor: r.status_cor }, fotoId: r.foto_id, tags: r.tags,
       candidaturaEm: r.candidatura_em, ultimaInteracaoEm: r.ultima_interacao_em, naoLidas: r.nao_lidas,
+      preCadastro: r.cadastro_pendente ? { conviteAgendadoPara: r.convite_agendado_para } : null,
       ultimaMensagem: r.ult_em ? { texto: decifrarSeguro(r.ult_texto)?.slice(0, 140) ?? (r.ult_arquivo ? '📎 Arquivo' : ''), autor: r.ult_autor, em: r.ult_em } : null,
     })),
   });
@@ -140,6 +143,8 @@ candidatosRouter.get('/:id', h(async (req, res) => {
     unidade: { id: c.unidade_id, nome: c.unidade_nome },
     status: { id: c.status_id, nome: c.status_nome, cor: c.status_cor, final: c.status_final },
     fotoId: c.foto_id, curriculoId: c.curriculo_id, candidaturaEm: c.candidatura_em, consentimentoEm: c.consentimento_em,
+    origem: c.origem,
+    preCadastro: c.cadastro_pendente ? { conviteAgendadoPara: c.convite_agendado_para, conviteExpiraEm: c.convite_expira_em } : null,
     tags: tags.rows,
     etapas: ETAPAS.map((e) => etapas.rows.find((r) => r.etapa === e) ?? { etapa: e, situacao: 'nao_iniciada', origem: 'automatica' }),
     historico: {
