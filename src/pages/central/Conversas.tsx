@@ -110,7 +110,8 @@ export function Conversas() {
         <>
           <div className="fixed inset-0 z-30 bg-grafite/40 xl:hidden" onClick={() => setPerfilAberto(false)} aria-hidden />
           <aside className="fixed inset-y-0 right-0 z-40 w-full max-w-[400px] overflow-y-auto border-l border-borda bg-superficie shadow-2xl xl:static xl:z-auto xl:shadow-none" aria-label="Perfil do candidato">
-            <PerfilCandidato candidatoId={selecionado} versao={versaoPerfil} onFechar={() => setPerfilAberto(false)} onMudou={() => void lista.recarregar()} />
+            <PerfilCandidato candidatoId={selecionado} versao={versaoPerfil} onFechar={() => setPerfilAberto(false)} onMudou={() => void lista.recarregar()}
+              onExcluido={() => { setPerfilAberto(false); escolher(null); void lista.recarregar(); }} />
           </aside>
         </>
       )}
