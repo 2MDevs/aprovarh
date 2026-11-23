@@ -53,7 +53,7 @@ export function Candidatura() {
         <div className="mx-auto flex max-w-2xl flex-col items-center gap-3 text-center">
           <LogoHummm fundo="escuro" className="h-12" />
           <h1 className="text-2xl font-bold sm:text-3xl">Trabalhe conosco</h1>
-          <p className="text-[15px] text-creme/75">{convite ? `Olá, ${convite.nome}! Seu currículo já está com a gente. Complete seu cadastro para conversar com o RH.` : 'Preencha seus dados e envie seu currículo. Leva poucos minutos.'}</p>
+          <p className="text-[15px] text-creme/75">{convite ? `Olá, ${convite.nome}! Confirme seus dados para conversar com o RH. Leva 1 minuto.` : 'Preencha seus dados e envie seu currículo. Leva poucos minutos.'}</p>
         </div>
       </header>
       <div className="faixa-marca h-1.5" aria-hidden />
@@ -203,7 +203,7 @@ function FormularioCandidatura({ form, convite, onEnviado }: { form: Formulario;
 
       <section className="cartao space-y-4 p-5 sm:p-6">
         <h2 className="text-lg font-semibold">Documentos</h2>
-        {convite ? (
+        {convite?.curriculo ? (
           <div>
             <span className="rotulo">Currículo</span>
             <div className="flex min-h-20 items-center gap-4 rounded-2xl border-2 border-verde/40 bg-verde/8 px-4 py-3">
@@ -215,7 +215,7 @@ function FormularioCandidatura({ form, convite, onEnviado }: { form: Formulario;
             </div>
           </div>
         ) : (
-          <EscolherArquivo rotulo="Currículo" dica={`${form.limites.curriculo.join(', ')} · até ${form.limites.curriculoMb} MB`}
+          <EscolherArquivo rotulo="Currículo" opcional={Boolean(convite)} dica={`${form.limites.curriculo.join(', ')} · até ${form.limites.curriculoMb} MB`}
             accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
             arquivo={curriculo} onEscolher={setCurriculo} icone={<FileText className="size-6" />} />
         )}

@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, UserPlus } from 'lucide-react';
+import { ChevronLeft, ChevronRight, FileSpreadsheet, UserPlus } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSessao } from '../../app/sessao';
@@ -8,7 +8,7 @@ import { dataHora } from '../../lib/formato';
 import { useDados } from '../../lib/useDados';
 import { Foto, Pilula } from './comum';
 import { Filtros, FILTRO_VAZIO, queryFiltros, type ValoresFiltro } from './Filtros';
-import { BotaoConvites, ModalPreCadastro } from './PreCadastro';
+import { BotaoEnviarLink, ModalImportar, ModalPreCadastro } from './PreCadastro';
 import type { PaginaCandidatos } from './tipos';
 
 /** Candidatos em tabela, para quem prefere trabalhar em lista. Clicar abre a conversa. */
@@ -18,7 +18,7 @@ export function Candidatos() {
   const [filtro, setFiltro] = useState<ValoresFiltro>(FILTRO_VAZIO);
   const [pagina, setPagina] = useState(1);
   const [cadastrando, setCadastrando] = useState(false);
-  const [versaoConvites, setVersaoConvites] = useState(0);
+  const [importando, setImportando] = useState(false);
   const lista = useDados<PaginaCandidatos>(pode('candidatos.ver') ? `/api/central/candidatos${queryFiltros(filtro, { pagina, porPagina: 30 })}` : null);
   const t = useRef<ReturnType<typeof setTimeout>>(undefined);
   useEventos(() => {
@@ -33,10 +33,11 @@ export function Candidatos() {
     <>
       <Cabecalho titulo="Candidatos" descricao="Todos os candidatos das unidades que você atende."
         acoes={pode('candidatos.editar') ? <>
-          <BotaoConvites key={versaoConvites} onFeito={() => void lista.recarregar()} />
+          <Botao variante="secundario" icone={<FileSpreadsheet className="size-4" />} onClick={() => setImportando(true)}>Importar planilha</Botao>
           <Botao icone={<UserPlus className="size-4" />} onClick={() => setCadastrando(true)}>Cadastrar candidato</Botao>
         </> : undefined} />
-      {cadastrando && <ModalPreCadastro onFechar={() => setCadastrando(false)} onCriado={() => { void lista.recarregar(); setVersaoConvites((v) => v + 1); }} />}
+      {cadastrando && <ModalPreCadastro onFechar={() => setCadastrando(false)} onCriado={() => void lista.recarregar()} />}
+      {importando && <ModalImportar onFechar={() => setImportando(false)} onImportado={() => void lista.recarregar()} />}
       <div className="cartao mb-4 p-4"><Filtros valor={filtro} onChange={(v) => { setFiltro(v); setPagina(1); }} /></div>
       {lista.carregando && !lista.dados ? <Carregando /> : lista.erro ? <ErroCarregar mensagem={lista.erro.message} onTentar={lista.recarregar} /> : !lista.dados?.candidatos.length ? (
         <Vazio titulo="Nenhum candidato encontrado." />
@@ -47,7 +48,7 @@ export function Candidatos() {
               <thead className="bg-grafite text-xs uppercase tracking-wide text-creme">
                 <tr>
                   <th className="px-4 py-3 font-semibold">Candidato</th><th className="px-4 py-3 font-semibold">Unidade</th><th className="px-4 py-3 font-semibold">Status</th>
-                  <th className="px-4 py-3 font-semibold">Tags</th><th className="px-4 py-3 font-semibold">Candidatura</th><th className="px-4 py-3 font-semibold">Não lidas</th>
+                  <th className="px-4 py-3 font-semibold">Tags</th><th className="px-4 py-3 font-semibold">Candidatura</th><th className="px-4 py-3 font-semibold">Não lidas</th><th className="px-4 py-3 font-semibold"><span className="sr-only">Convite</span></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-borda">
@@ -59,6 +60,7 @@ export function Candidatos() {
                     <td className="px-4 py-3"><span className="flex flex-wrap gap-1">{c.tags.map((tg) => <Pilula key={tg.id} cor={tg.cor} pequena>{tg.nome}</Pilula>)}</span></td>
                     <td className="whitespace-nowrap px-4 py-3 text-suave">{dataHora(c.candidaturaEm)}</td>
                     <td className="px-4 py-3">{c.naoLidas > 0 ? <span className="rounded-full bg-verde px-2 py-0.5 text-xs font-bold text-white">{c.naoLidas}</span> : '—'}</td>
+                    <td className="px-4 py-3 text-right">{c.preCadastro && pode('candidatos.editar') && <BotaoEnviarLink candidatoId={c.id} agendado={c.preCadastro.conviteAgendadoPara} onEnviado={() => void lista.recarregar()} />}</td>
                   </tr>
                 ))}
               </tbody>
