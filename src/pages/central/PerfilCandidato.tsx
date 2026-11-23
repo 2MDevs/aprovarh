@@ -15,7 +15,7 @@ import { ROTULO_ETAPA, ROTULO_SITUACAO, urlArquivo, type Perfil, type SituacaoEt
 
 const TOM_ETAPA: Record<SituacaoEtapa, 'verde' | 'amarelo' | 'cinza'> = { concluida: 'verde', em_andamento: 'amarelo', aguardando: 'amarelo', nao_iniciada: 'cinza' };
 
-export function PerfilCandidato({ candidatoId, versao, onFechar, onMudou }: { candidatoId: string; versao: number; onFechar: () => void; onMudou: () => void }) {
+export function PerfilCandidato({ candidatoId, versao, onFechar, onMudou, onExcluido }: { candidatoId: string; versao: number; onFechar: () => void; onMudou: () => void; onExcluido?: () => void }) {
   const { pode } = useSessao();
   const { dados: p, erro, carregando, recarregar } = useDados<Perfil>(`/api/central/candidatos/${candidatoId}`);
   const op = useOpcoesFiltro();
@@ -144,6 +144,8 @@ export function PerfilCandidato({ candidatoId, versao, onFechar, onMudou }: { ca
 
       <AcessoPortal p={p} pode={pode('portal.liberar')} onMudou={() => { void recarregar(); onMudou(); }} />
       {pode('automacoes.ver') && <AutomacoesDoCandidato candidatoId={p.id} versao={versao} />}
+
+      {pode('candidatos.excluir') && <ExcluirCandidato p={p} onExcluido={() => { onMudou(); onExcluido?.(); }} />}
 
       {arquivoVisto && (
         <VisualizadorArquivo url={urlArquivo(p.id, arquivoVisto.id)} urlBaixar={urlArquivo(p.id, arquivoVisto.id, 'baixar')} nome={arquivoVisto.nome} tipoMime={arquivoVisto.tipoMime} onFechar={() => setVendo(null)} />
@@ -470,6 +472,49 @@ function SecaoConvite({ p }: { p: Perfil }) {
           </Botao>
         )}
       </Aviso>
+    </div>
+  );
+}
+
+/** Excluir o candidato (e a conversa dele). Pede o motivo, que fica na auditoria. */
+function ExcluirCandidato({ p, onExcluido }: { p: Perfil; onExcluido: () => void }) {
+  const avisar = useAviso();
+  const [aberto, setAberto] = useState(false);
+  const [motivo, setMotivo] = useState('');
+  const [excluindo, setExcluindo] = useState(false);
+  const [erro, setErro] = useState('');
+  const excluir = async () => {
+    setExcluindo(true);
+    setErro('');
+    try {
+      await api.post(`/api/central/candidatos/${p.id}/excluir`, { motivo });
+      avisar(`${p.nome} ${p.sobrenome} (${p.codigo}) foi excluído.`);
+      setAberto(false);
+      onExcluido();
+    } catch (e) {
+      setErro(e instanceof ApiError ? e.message : 'Não foi possível excluir.');
+    } finally {
+      setExcluindo(false);
+    }
+  };
+  return (
+    <div className="mx-4 mb-6 mt-2">
+      <Botao variante="secundario" className="w-full !text-vermelho" icone={<Trash2 className="size-4" />} onClick={() => setAberto(true)}>Excluir candidato</Botao>
+      <Modal aberto={aberto} onFechar={() => setAberto(false)} largura="max-w-md" titulo={`Excluir ${p.nome}?`}
+        descricao="O candidato e a conversa saem da Central. Se a pessoa se candidatar de novo, entra como ficha nova."
+        rodape={<><Botao variante="secundario" onClick={() => setAberto(false)}>Cancelar</Botao>
+          <Botao variante="perigo" carregando={excluindo} disabled={motivo.trim().length < 3} onClick={() => void excluir()}>Excluir</Botao></>}>
+        <div className="space-y-3 text-sm">
+          {erro && <Aviso tipo="erro">{erro}</Aviso>}
+          <p>Junto com a exclusão:</p>
+          <ul className="list-disc pl-5 text-suave">
+            <li>o acesso ao portal é encerrado;</li>
+            <li>a entrevista em aberto é cancelada;</li>
+            <li>as automações e as mensagens de WhatsApp que ainda estavam na fila param.</li>
+          </ul>
+          <Campo rotulo="Motivo (fica na auditoria)" value={motivo} onChange={(e) => setMotivo(e.target.value)} maxLength={200} placeholder="Ex.: cadastro de teste, pediu para sair do processo..." />
+        </div>
+      </Modal>
     </div>
   );
 }

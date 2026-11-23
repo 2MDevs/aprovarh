@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { enxergaUnidade, filtroUnidades, pode } from '../../core/access.ts';
 import { auditarReq } from '../../core/audit.ts';
+import { publicar } from '../../core/tempoReal.ts';
 import { pool, transaction } from '../../db/pool.ts';
 import { lerArquivo } from '../../lib/arquivos.ts';
 import { encrypt, hmac } from '../../lib/crypto.ts';
@@ -353,5 +354,48 @@ candidatosRouter.post('/:id/acesso/revogar', exigirPermissao('portal.liberar'), 
     return revogarAcesso(db, id, c.unidade_id, { tipo: 'usuario', usuarioId: req.usuario!.id, ator }, 'Revogada pela equipe de RH', ipDe(req));
   });
   if (!revogou) throw notFound('Não há acesso ativo para revogar.');
+  res.json({ ok: true });
+}));
+
+// ── Excluir candidato (e a conversa dele) ─────────────────────────────────
+/**
+ * Tira o candidato de todas as listas e da Central. Também: encerra o acesso ao portal, cancela a entrevista em aberto,
+ * para as automações e os envios de WhatsApp que ainda estavam na fila. A ficha fica guardada (exclusão lógica) para a
+ * auditoria até a regra de retenção dos dados ser definida (decisão D10). Se a pessoa se candidatar de novo, nasce uma ficha nova.
+ */
+candidatosRouter.post('/:id/excluir', exigirPermissao('candidatos.excluir'), h(async (req, res) => {
+  const id = parse(uuid, req.params.id);
+  const { motivo } = parse(z.object({ motivo: z.string().trim().min(3, 'Informe o motivo da exclusão.').max(200) }), req.body);
+  const u = req.usuario!;
+  const resumo = await transaction(async (db) => {
+    const c = await candidatoVisivel(u, id, db, true);
+    const ator = { usuarioId: u.id, usuarioNome: u.nome };
+    await revogarAcesso(db, id, c.unidade_id, { tipo: 'usuario', usuarioId: u.id, ator }, 'Candidato excluído', ipDe(req));
+    const entrevistas = await db.query(
+      `UPDATE entrevistas SET situacao = 'cancelada', encerrada_em = now(), motivo = 'Candidato excluído'
+        WHERE candidato_id = $1 AND situacao IN ('aguardando_confirmacao', 'confirmada', 'remarcacao_solicitada')`, [id],
+    );
+    await db.query(
+      `UPDATE automacao_esperas w SET resolvida_em = now(), resolucao = 'interrompida'
+         FROM automacao_execucoes e WHERE w.execucao_id = e.id AND e.candidato_id = $1 AND w.resolvida_em IS NULL`, [id],
+    );
+    const execucoes = await db.query(
+      `UPDATE automacao_execucoes SET situacao = 'interrompida', erro = 'Candidato excluído.', atualizada_em = now()
+        WHERE candidato_id = $1 AND situacao IN ('em_andamento', 'aguardando')`, [id],
+    );
+    const envios = await db.query(
+      `UPDATE fila_envio f SET situacao = 'falhou', ultimo_erro = 'Candidato excluído: envio cancelado.'
+         FROM mensagens m JOIN conversas cv ON cv.id = m.conversa_id
+        WHERE f.mensagem_id = m.id AND cv.candidato_id = $1 AND f.situacao = 'pendente'`, [id],
+    );
+    await db.query(`UPDATE candidatos SET excluido_em = now(), convite_token_hash = NULL, atualizado_em = now() WHERE id = $1`, [id]);
+    await db.query('INSERT INTO eventos_dominio (tipo, candidato_id, dados) VALUES ($1, $2, $3)', ['candidato.excluido', id, JSON.stringify({ motivo })]);
+    await publicar(db, { tipo: 'candidato.atualizado', candidatoId: id, unidadeId: c.unidade_id });
+    return { codigo: c.codigo, nome: `${c.nome} ${c.sobrenome}`.trim(), entrevistas: entrevistas.rowCount, execucoes: execucoes.rowCount, envios: envios.rowCount };
+  });
+  await auditarReq(req, {
+    acao: 'candidato.excluido', resultado: 'sucesso', item: { tipo: 'candidato', id, nome: `${resumo.nome} (${resumo.codigo})` },
+    detalhes: { motivo, entrevistasCanceladas: resumo.entrevistas, automacoesInterrompidas: resumo.execucoes, enviosCancelados: resumo.envios },
+  });
   res.json({ ok: true });
 }));
