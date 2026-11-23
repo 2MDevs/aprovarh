@@ -11,6 +11,7 @@ import { pool, transaction } from '../../db/pool.ts';
 import { descartarArquivos, detectarTipo, guardarArquivo, type ArquivoGuardado, type TipoAceito } from '../../lib/arquivos.ts';
 import { encrypt, hmac, randomToken } from '../../lib/crypto.ts';
 import { capitalizarNome, nomeValido, normalizarTelefone } from '../../lib/documentos.ts';
+import { candidatosDaPlanilha, ErroPlanilha, lerPlanilha } from '../../lib/planilha.ts';
 import { badRequest, forbidden, h, parse } from '../../lib/http.ts';
 import { exigirLogin, exigirPermissao } from '../../middleware/auth.ts';
 import { gravarLinhaDoTempoInicial } from '../publico/service.ts';
@@ -27,7 +28,7 @@ export const convitesRouter = Router();
 convitesRouter.use(exigirLogin(), exigirPermissao('candidatos.ver'), exigirPermissao('candidatos.editar'));
 
 const CURRICULO: TipoAceito[] = ['pdf', 'doc', 'docx'];
-const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 25 * 1024 * 1024, files: 1, fields: 8 } });
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024, files: 1, fields: 8 } });
 const VALIDADE_CONVITE_DIAS = 7;
 
 /**
@@ -74,6 +75,48 @@ async function agendarConvite(db: PoolClient, candidatoId: string, usuario: { id
 }
 
 // ── Pré-cadastro ──────────────────────────────────────────────────────────
+
+export interface DadosPreCadastro { nome: string; sobrenome: string; telefone: string; unidadeId: string }
+
+/**
+ * Cria a ficha pendente (sem CPF e sem aceite do aviso). O currículo é opcional.
+ * Recusa telefone que já é de outro candidato. Chamada dentro de uma transação.
+ */
+export async function criarPreCadastro(
+  db: PoolClient, d: DadosPreCadastro, u: { id: string; nome: string },
+  curriculo: { conteudo: Buffer; nome: string; tipo: TipoAceito } | null, gravados: ArquivoGuardado[], origem = 'Pré-cadastro feito',
+): Promise<{ id: string; codigo: string }> {
+  const telHash = hmac(`tel:${d.telefone}`);
+  await db.query('SELECT pg_advisory_xact_lock(hashtextextended($1, 0))', [telHash]);
+  const ja = await db.query<{ codigo: string }>('SELECT codigo FROM candidatos WHERE telefone_hash = $1 AND excluido_em IS NULL LIMIT 1', [telHash]);
+  if (ja.rowCount) throw badRequest(`Já existe um candidato com esse telefone (${ja.rows[0].codigo}).`, 'telefone_existe');
+  const inicial = (await db.query<{ id: string; etapa_portal: string; situacao_portal: string }>(`SELECT id, etapa_portal, situacao_portal FROM status WHERE chave_sistema = 'novo'`)).rows[0];
+  const arq = curriculo ? await guardarArquivo(db, curriculo.conteudo, curriculo.nome, curriculo.tipo) : null;
+  if (arq) gravados.push(arq);
+  const c = await db.query<{ id: string; codigo: string }>(
+    `INSERT INTO candidatos (nome, sobrenome, telefone, telefone_hash, telefone_final, unidade_id, status_id, curriculo_id,
+       origem, cadastro_pendente, pre_cadastrado_por)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'rh',true,$9) RETURNING id, codigo`,
+    [d.nome, d.sobrenome, encrypt(d.telefone), telHash, d.telefone.slice(-4), d.unidadeId, inicial.id, arq?.id ?? null, u.id],
+  );
+  const id = c.rows[0].id;
+  await db.query('INSERT INTO conversas (candidato_id) VALUES ($1)', [id]);
+  if (arq) await db.query(`INSERT INTO candidato_arquivos (candidato_id, arquivo_id, tipo, enviado_por) VALUES ($1, $2, 'curriculo', 'gestora')`, [id, arq.id]);
+  await db.query(
+    `INSERT INTO status_historico (candidato_id, status_novo_id, autor_tipo, autor_nome, motivo) VALUES ($1, $2, 'usuario', $3, 'Pré-cadastro feito pelo RH')`,
+    [id, inicial.id, u.nome],
+  );
+  await gravarLinhaDoTempoInicial(db, id, inicial);
+  const msg = await db.query<{ id: string; criado_em: Date }>(
+    `INSERT INTO mensagens (conversa_id, sentido, canal, autor_tipo, autor_nome, texto, visivel_ao_candidato)
+     SELECT id, 'entrada', 'sistema', 'sistema', 'Sistema', $2, false FROM conversas WHERE candidato_id = $1 RETURNING id, criado_em`,
+    [id, encrypt(`${origem} por ${u.nome}. Falta o candidato completar o cadastro pelo convite.`)],
+  );
+  await db.query('UPDATE conversas SET ultima_mensagem_id = $2, ultima_mensagem_em = $3 WHERE candidato_id = $1', [id, msg.rows[0].id, msg.rows[0].criado_em]);
+  await publicar(db, { tipo: 'candidatura.nova', candidatoId: id, unidadeId: d.unidadeId });
+  return c.rows[0];
+}
+
 const camposPre = z.object({
   nome: z.string().trim().min(2, 'Informe o nome.').max(80).refine(nomeValido, 'Nome: só letras.'),
   sobrenome: z.string().trim().max(120).refine((v) => !v || nomeValido(v), 'Sobrenome: só letras.').default(''),
@@ -83,65 +126,101 @@ const camposPre = z.object({
 });
 
 convitesRouter.post('/pre-cadastro', (req, res, next) => {
-  upload.single('curriculo')(req, res, (err?: unknown) => (err ? next(badRequest('Arquivo inválido ou grande demais (máximo 25 MB).')) : next()));
+  upload.single('curriculo')(req, res, (err?: unknown) => (err ? next(badRequest('Arquivo inválido ou grande demais (máximo 10 MB).')) : next()));
 }, h(async (req, res) => {
   const u = req.usuario!;
   const b = parse(camposPre, req.body);
   if (!enxergaUnidade(u, b.unidadeId)) throw forbidden('Você não tem acesso a esta unidade.');
   const telefone = normalizarTelefone(b.telefone);
   if (!telefone) throw badRequest('Telefone inválido. Informe o DDD e o número, por exemplo (11) 91234-5678.', 'telefone_invalido');
+  // Currículo opcional.
   const cv = req.file;
-  if (!cv) throw badRequest('Anexe o currículo.', 'sem_curriculo');
-  const tipo = detectarTipo(cv.buffer);
-  if (!tipo || !CURRICULO.includes(tipo)) throw badRequest('O currículo precisa ser PDF, DOC ou DOCX.', 'curriculo_tipo');
-  const limite = await cfgNumero('arquivos.curriculo_mb');
-  if (cv.size > limite * 1024 * 1024) throw badRequest(`O currículo pode ter no máximo ${limite} MB.`, 'curriculo_grande');
-
+  let curriculo: { conteudo: Buffer; nome: string; tipo: TipoAceito } | null = null;
+  if (cv) {
+    const tipo = detectarTipo(cv.buffer);
+    if (!tipo || !CURRICULO.includes(tipo)) throw badRequest('O currículo precisa ser PDF, DOC ou DOCX.', 'curriculo_tipo');
+    const limite = await cfgNumero('arquivos.curriculo_mb');
+    if (cv.size > limite * 1024 * 1024) throw badRequest(`O currículo pode ter no máximo ${limite} MB.`, 'curriculo_grande');
+    curriculo = { conteudo: cv.buffer, nome: cv.originalname, tipo };
+  }
   const gravados: ArquivoGuardado[] = [];
   try {
     const r = await transaction(async (db) => {
-      const telHash = hmac(`tel:${telefone}`);
-      await db.query('SELECT pg_advisory_xact_lock(hashtextextended($1, 0))', [telHash]);
-      const ja = await db.query<{ codigo: string }>('SELECT codigo FROM candidatos WHERE telefone_hash = $1 AND excluido_em IS NULL LIMIT 1', [telHash]);
-      if (ja.rowCount) throw badRequest(`Já existe um candidato com esse telefone (${ja.rows[0].codigo}). Procure por ele na lista.`, 'telefone_existe');
       const un = await db.query('SELECT 1 FROM unidades WHERE id = $1 AND excluido_em IS NULL', [b.unidadeId]);
       if (!un.rowCount) throw badRequest('Unidade não encontrada.');
-      const inicial = (await db.query<{ id: string; etapa_portal: string; situacao_portal: string }>(`SELECT id, etapa_portal, situacao_portal FROM status WHERE chave_sistema = 'novo'`)).rows[0];
-      const arq = await guardarArquivo(db, cv.buffer, cv.originalname, tipo);
-      gravados.push(arq);
-      const nome = capitalizarNome(b.nome);
-      const sobrenome = b.sobrenome ? capitalizarNome(b.sobrenome) : '';
-      const c = await db.query<{ id: string; codigo: string }>(
-        `INSERT INTO candidatos (nome, sobrenome, telefone, telefone_hash, telefone_final, unidade_id, status_id, curriculo_id,
-           origem, cadastro_pendente, pre_cadastrado_por)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'rh',true,$9) RETURNING id, codigo`,
-        [nome, sobrenome, encrypt(telefone), telHash, telefone.slice(-4), b.unidadeId, inicial.id, arq.id, u.id],
-      );
-      const id = c.rows[0].id;
-      await db.query('INSERT INTO conversas (candidato_id) VALUES ($1)', [id]);
-      await db.query(`INSERT INTO candidato_arquivos (candidato_id, arquivo_id, tipo, enviado_por) VALUES ($1, $2, 'curriculo', 'gestora')`, [id, arq.id]);
-      await db.query(
-        `INSERT INTO status_historico (candidato_id, status_novo_id, autor_tipo, autor_nome, motivo) VALUES ($1, $2, 'usuario', $3, 'Pré-cadastro feito pelo RH')`,
-        [id, inicial.id, u.nome],
-      );
-      await gravarLinhaDoTempoInicial(db, id, inicial);
-      const msg = await db.query<{ id: string; criado_em: Date }>(
-        `INSERT INTO mensagens (conversa_id, sentido, canal, autor_tipo, autor_nome, texto, visivel_ao_candidato)
-         SELECT id, 'entrada', 'sistema', 'sistema', 'Sistema', $2, false FROM conversas WHERE candidato_id = $1 RETURNING id, criado_em`,
-        [id, encrypt(`Pré-cadastro feito por ${u.nome}. Falta o candidato completar o cadastro pelo convite.`)],
-      );
-      await db.query('UPDATE conversas SET ultima_mensagem_id = $2, ultima_mensagem_em = $3 WHERE candidato_id = $1', [id, msg.rows[0].id, msg.rows[0].criado_em]);
-      let agendado: Date | null = null;
-      if (b.enviarConvite === 'true') agendado = await agendarConvite(db, id, u);
-      await publicar(db, { tipo: 'candidatura.nova', candidatoId: id, unidadeId: b.unidadeId });
-      return { id, codigo: c.rows[0].codigo, agendado };
+      const c = await criarPreCadastro(db, { nome: capitalizarNome(b.nome), sobrenome: b.sobrenome ? capitalizarNome(b.sobrenome) : '', telefone, unidadeId: b.unidadeId }, u, curriculo, gravados);
+      const agendado = b.enviarConvite === 'true' ? await agendarConvite(db, c.id, u) : null;
+      return { ...c, agendado };
     });
-    await auditarReq(req, { acao: 'candidato.pre_cadastrado', resultado: 'sucesso', item: { tipo: 'candidato', id: r.id, nome: r.codigo }, detalhes: { conviteAgendadoPara: r.agendado } });
+    await auditarReq(req, { acao: 'candidato.pre_cadastrado', resultado: 'sucesso', item: { tipo: 'candidato', id: r.id, nome: r.codigo }, detalhes: { conviteAgendadoPara: r.agendado, comCurriculo: Boolean(curriculo) } });
     res.status(201).json({ id: r.id, codigo: r.codigo, conviteAgendadoPara: r.agendado });
   } catch (err) {
     await descartarArquivos(gravados);
     throw err;
   }
+}));
+
+// ── Importar planilha (Excel ou CSV) ──────────────────────────────────────
+const sem = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+
+/**
+ * Importa os candidatos de uma planilha como pré-cadastros (sem currículo e SEM enviar convite).
+ * Com previa=true só confere e mostra o que vai acontecer. Cada linha é salva sozinha: uma linha com problema não
+ * impede as outras.
+ */
+convitesRouter.post('/importar', (req, res, next) => {
+  upload.single('arquivo')(req, res, (err?: unknown) => (err ? next(badRequest('Arquivo inválido ou grande demais (máximo 10 MB).')) : next()));
+}, h(async (req, res) => {
+  const u = req.usuario!;
+  const b = parse(z.object({ unidadeId: z.string().uuid().optional().or(z.literal('')), previa: z.enum(['true', 'false']).default('true') }), req.body);
+  if (!req.file) throw badRequest('Escolha a planilha.', 'sem_arquivo');
+  let lidas: ReturnType<typeof candidatosDaPlanilha>;
+  try {
+    lidas = candidatosDaPlanilha(lerPlanilha(req.file.buffer));
+  } catch (err) {
+    if (err instanceof ErroPlanilha) throw badRequest(err.message, 'planilha_invalida');
+    throw badRequest('Não foi possível ler a planilha. Salve como Excel (.xlsx) ou CSV e tente de novo.', 'planilha_invalida');
+  }
+  if (!lidas.candidatos.length) throw badRequest('A planilha não tem nenhuma pessoa abaixo da linha dos títulos.', 'planilha_vazia');
+  if (lidas.candidatos.length > 1000) throw badRequest('Máximo de 1000 pessoas por planilha.', 'planilha_grande');
+
+  const unidades = (await pool.query<{ id: string; nome: string }>('SELECT id, nome FROM unidades WHERE excluido_em IS NULL')).rows.filter((x) => enxergaUnidade(u, x.id));
+  const padrao = b.unidadeId ? unidades.find((x) => x.id === b.unidadeId) ?? null : null;
+  if (b.unidadeId && !padrao) throw forbidden('Você não tem acesso a esta unidade.');
+
+  type Resultado = { linha: number; nome: string; telefone: string; unidade: string | null; situacao: 'ok' | 'erro'; mensagem: string; codigo?: string };
+  const resultados: Resultado[] = [];
+  const vistos = new Set<string>();
+  for (const l of lidas.candidatos) {
+    const nome = l.nome ? capitalizarNome(l.nome) : '';
+    const sobrenome = l.sobrenome ? capitalizarNome(l.sobrenome) : '';
+    const tel = normalizarTelefone(l.telefone);
+    const un = l.unidade ? unidades.find((x) => sem(x.nome) === sem(l.unidade)) ?? null : padrao;
+    const base = { linha: l.linha, nome: `${nome} ${sobrenome}`.trim(), telefone: l.telefone, unidade: un?.nome ?? null };
+    const erro = !nomeValido(nome) ? 'Nome inválido (só letras).'
+      : sobrenome && !nomeValido(sobrenome) ? 'Sobrenome inválido (só letras).'
+      : !tel ? 'Telefone inválido.'
+      : !un ? (l.unidade ? `Unidade "${l.unidade}" não encontrada.` : 'Escolha a unidade.')
+      : vistos.has(tel) ? 'Telefone repetido na planilha.' : null;
+    if (erro) { resultados.push({ ...base, situacao: 'erro', mensagem: erro }); continue; }
+    vistos.add(tel!);
+    if (b.previa === 'true') {
+      const ja = await pool.query<{ codigo: string }>('SELECT codigo FROM candidatos WHERE telefone_hash = $1 AND excluido_em IS NULL LIMIT 1', [hmac(`tel:${tel}`)]);
+      resultados.push(ja.rowCount ? { ...base, situacao: 'erro', mensagem: `Já cadastrado (${ja.rows[0].codigo}).` } : { ...base, situacao: 'ok', mensagem: 'Pronto para importar.' });
+      continue;
+    }
+    try {
+      const c = await transaction((db) => criarPreCadastro(db, { nome, sobrenome, telefone: tel!, unidadeId: un!.id }, u, null, [], 'Pré-cadastro importado da planilha'));
+      resultados.push({ ...base, situacao: 'ok', mensagem: 'Importado.', codigo: c.codigo });
+    } catch (err) {
+      resultados.push({ ...base, situacao: 'erro', mensagem: err instanceof Error ? err.message : 'Falhou.' });
+    }
+  }
+  const ok = resultados.filter((r) => r.situacao === 'ok').length;
+  if (b.previa !== 'true') {
+    await auditarReq(req, { acao: 'candidato.planilha_importada', resultado: 'sucesso', detalhes: { arquivo: req.file.originalname, importados: ok, comErro: resultados.length - ok } });
+  }
+  res.json({ previa: b.previa === 'true', colunas: lidas.colunas, total: resultados.length, ok, erros: resultados.length - ok, resultados });
 }));
 
 // ── Convites ──────────────────────────────────────────────────────────────
